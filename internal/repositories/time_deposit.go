@@ -13,11 +13,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// type ITimeDepositRepository interface {
-// 	GetTimeDepositHistory(startDate, endDate string) ([]models.TimeDeposit, error)
-// 	UpsertTimeDeposits(timeDeposits []models.TimeDeposit) error
-// }
-
 type TimeDepositRepository struct {
 	DwhDB *sqlx.DB
 	AppDB *sqlx.DB
