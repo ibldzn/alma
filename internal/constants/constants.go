@@ -11,7 +11,7 @@ const (
 	SavingsHistoryTable = "eod_savings_balance_details_report"
 
 	// SavingsTodayTable is the name of the table in App DB that stores today's savings data.
-	SavingsTodayTable = "savings_today"
+	SavingsTodayTable = "savings_balance_details"
 
 	// AsiaJakarta is the IANA timezone name for Asia/Jakarta.
 	AsiaJakarta = "Asia/Jakarta"
