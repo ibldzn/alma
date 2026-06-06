@@ -52,6 +52,10 @@ func main() {
 
 	timeDepositRepository := repositories.NewTimeDepositRepository(db.Dwh, db.AppDb)
 	timeDepositService := services.NewTimeDepositService(timeDepositRepository)
+
+	savingRepository := repositories.NewSavingRepository(db.AppDb, db.Dwh)
+	savingService := services.NewSavingService(savingRepository)
+
 	fincloudService := services.NewFincloudService(
 		fincloud.Config{},
 		fincloud.Credentials{
@@ -59,6 +63,7 @@ func main() {
 			Password: os.Getenv("FINCLOUD_PASSWORD"),
 		},
 		timeDepositService,
+		savingService,
 	)
 
 	go func() {
@@ -76,6 +81,16 @@ func main() {
 
 	for productID, total := range x {
 		fmt.Printf("Product ID: %s, Total Nominal: %.2f\n", productID, total)
+	}
+
+	y, err := savingService.GetSavingSummary(ctx, "2026-06-01", "2026-06-30")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "getting saving summary: %v\n", err)
+		os.Exit(1)
+	}
+
+	for productID, total := range y {
+		fmt.Printf("Product ID: %s, Total Credit Balance: %.2f\n", productID, total)
 	}
 
 	<-ctx.Done()

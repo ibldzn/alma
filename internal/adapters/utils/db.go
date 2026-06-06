@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 
-	"github.com/ibldzn/alma/internal/constants"
 	"github.com/ibldzn/alma/internal/types"
 )
 
@@ -74,18 +72,4 @@ func ParseOptionalStringPtrField(raw *string) *string {
 	}
 	trimmed := strings.TrimSpace(*raw)
 	return &trimmed
-}
-
-func ParseOptionalTimeField(raw string) (time.Time, error) {
-	s := strings.TrimSpace(raw)
-	if s == "" {
-		return time.Time{}, nil
-	}
-
-	t, err := time.Parse(constants.DateFormat, s)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: expected date in format YYYY-MM-DD, got %q: %v", types.ErrInvalidData, raw, err)
-	}
-
-	return t, nil
 }
