@@ -21,4 +21,7 @@ const (
 
 	// DateTimeFormat is the standard date and time format used in the application.
 	DateTimeFormat = "2006-01-02 15:04:05"
+
+	// TabInternalProductID is the product ID for Tabungan Internal, which should be excluded from summaries.
+	TabInternalProductID = "TAB_INTERNAL"
 )
