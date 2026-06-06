@@ -34,9 +34,9 @@ type TimeDeposit struct {
 }
 
 type DwhTimeDeposit struct {
-	_RowHash          string    `db:"_row_hash" json:"-"`
-	SourceFile        *string   `db:"source_file" json:"source_file,omitempty"`
-	RowIndex          *int64    `db:"row_index" json:"row_index,omitempty"`
+	// _RowHash          string    `db:"_row_hash" json:"-"`
+	// SourceFile        *string   `db:"source_file" json:"source_file,omitempty"`
+	// RowIndex          *int64    `db:"row_index" json:"row_index,omitempty"`
 	AsOfDate          time.Time `db:"as_of_date" json:"as_of_date"`
 	Date              string    `db:"date" json:"date"`
 	BranchCode        string    `db:"branch_code" json:"branch_code"`
