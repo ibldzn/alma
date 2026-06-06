@@ -9,15 +9,31 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/ibldzn/alma/internal/adapters/fincloud"
-	"github.com/ibldzn/alma/internal/adapters/utils"
-	"github.com/ibldzn/alma/models"
+	"github.com/ibldzn/alma/internal/repositories"
+	"github.com/ibldzn/alma/internal/services"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 )
 
 type Database struct {
+	AppDb    *sqlx.DB
 	Dwh      *sqlx.DB
 	Superman *sqlx.DB
+}
+
+func (db *Database) Close() {
+	closeIfOk := func(name string, c *sqlx.DB) {
+		if c == nil {
+			return
+		}
+		if err := c.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "closing %s database: %v\n", name, err)
+		}
+	}
+
+	closeIfOk("application", db.AppDb)
+	closeIfOk("DWH", db.Dwh)
+	closeIfOk("Superman", db.Superman)
 }
 
 func main() {
@@ -32,38 +48,39 @@ func main() {
 
 	db, err := initDB()
 	ensureOk("initializing database connections", err)
-	defer db.Dwh.Close()
-	defer db.Superman.Close()
+	defer db.Close()
 
-	client, err := fincloud.NewClient(fincloud.Config{})
-	ensureOk("creating Fincloud client", err)
+	timeDepositRepository := repositories.NewTimeDepositRepository(db.Dwh, db.AppDb)
+	timeDepositService := services.NewTimeDepositService(timeDepositRepository)
+	fincloudService := services.NewFincloudService(
+		fincloud.Config{},
+		fincloud.Credentials{
+			Username: os.Getenv("FINCLOUD_USERNAME"),
+			Password: os.Getenv("FINCLOUD_PASSWORD"),
+		},
+		timeDepositService,
+	)
 
-	creds := fincloud.Credentials{
-		Username: os.Getenv("FINCLOUD_USERNAME"),
-		Password: os.Getenv("FINCLOUD_PASSWORD"),
-	}
-
-	session, err := client.Login(ctx, creds)
-	ensureOk("logging in to Fincloud", err)
-	defer client.Logout(ctx, session.ID)
-
-	ctx = fincloud.WithFincloudSessionID(ctx, session.ID)
-
-	report, err := client.DownloadReport(ctx, "Time Deposit Account Balance Detail Today", "")
-	ensureOk("downloading report from Fincloud", err)
-
-	headers, records, err := utils.TransposeCSV([]byte(report), '|')
-	ensureOk("transposing CSV data", err)
-
-	for _, record := range records {
-		var td models.TimeDepositToday
-		if err := td.FromCSV(headers, record); err != nil {
-			fmt.Fprintf(os.Stderr, "parsing CSV record: %v\n", err)
-			continue
+	go func() {
+		if err := fincloudService.KickOffScheduleSync(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "starting scheduled sync: %v\n", err)
+			os.Exit(1)
 		}
+	}()
 
-		fmt.Printf("%+v\n", td)
+	x, err := timeDepositService.GetTimeDepositSummary(ctx, "2026-06-01", "2026-06-30")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "getting time deposit summary: %v\n", err)
+		os.Exit(1)
 	}
+
+	for productID, total := range x {
+		fmt.Printf("Product ID: %s, Total Nominal: %.2f\n", productID, total)
+	}
+
+	<-ctx.Done()
+
+	fmt.Println("shutting down gracefully...")
 }
 
 func ensureOk(msg string, err error) {
@@ -74,6 +91,11 @@ func ensureOk(msg string, err error) {
 }
 
 func initDB() (*Database, error) {
+	appDb, err := sqlx.Open("mysql", os.Getenv("GOOSE_DBSTRING"))
+	if err != nil {
+		return nil, fmt.Errorf("opening application database: %w", err)
+	}
+
 	dwh, err := sqlx.Open("mysql", os.Getenv("DWH_DBSTRING"))
 	if err != nil {
 		return nil, fmt.Errorf("opening DWH database: %w", err)
@@ -87,5 +109,6 @@ func initDB() (*Database, error) {
 	return &Database{
 		Dwh:      dwh,
 		Superman: superman,
+		AppDb:    appDb,
 	}, nil
 }
