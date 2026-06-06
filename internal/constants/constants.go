@@ -5,7 +5,7 @@ const (
 	TimeDepositHistoryTable = "eod_time_deposit_account_balance_details"
 
 	// TimeDepositTodayTable is the name of the table in App DB that stores today's time deposit data.
-	TimeDepositTodayTable = "eod_time_deposit_today"
+	TimeDepositTodayTable = "time_deposit_today"
 
 	// SavingsHistoryTable is the name of the table in DWH that stores savings history.
 	SavingsHistoryTable = "eod_savings_balance_details_report"
