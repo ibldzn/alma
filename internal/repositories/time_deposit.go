@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -18,7 +19,7 @@ type TimeDepositRepository struct {
 	AppDB *sqlx.DB
 }
 
-func (r *TimeDepositRepository) GetTimeDepositHistory(startDate, endDate string) ([]models.TimeDeposit, error) {
+func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, startDate, endDate string) ([]models.TimeDeposit, error) {
 	start, err := time.Parse(constants.DateFormat, startDate)
 	if err != nil {
 		return nil, err
@@ -49,7 +50,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(startDate, endDate string)
 	)
 
 	var timeDeposits []models.DwhTimeDeposit
-	err = r.DwhDB.Select(&timeDeposits, query, startDate, endDate)
+	err = r.DwhDB.SelectContext(ctx, &timeDeposits, query, startDate, endDate)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(startDate, endDate string)
 	today := time.Now().In(time.FixedZone(constants.AsiaJakarta, 7*60*60))
 	if utils.IsDateEqual(today, end) {
 		var tdToday []models.TimeDeposit
-		err = r.AppDB.Select(&tdToday, query, today.Format(constants.DateFormat), today.Format(constants.DateFormat))
+		err = r.AppDB.SelectContext(ctx, &tdToday, query, today.Format(constants.DateFormat), today.Format(constants.DateFormat))
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +76,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(startDate, endDate string)
 	return results, nil
 }
 
-func (r *TimeDepositRepository) UpsertTimeDeposits(timeDeposits []models.TimeDeposit) error {
+func (r *TimeDepositRepository) UpsertTimeDeposits(ctx context.Context, timeDeposits []models.TimeDeposit) error {
 	if len(timeDeposits) == 0 {
 		return nil
 	}
@@ -124,7 +125,7 @@ func (r *TimeDepositRepository) UpsertTimeDeposits(timeDeposits []models.TimeDep
 	defer stmt.Close()
 
 	for i := range timeDeposits {
-		if _, err := stmt.Exec(&timeDeposits[i]); err != nil {
+		if _, err := stmt.ExecContext(ctx, &timeDeposits[i]); err != nil {
 			return fmt.Errorf(
 				"upsert time deposit row %d account_no=%s: %w",
 				i,
