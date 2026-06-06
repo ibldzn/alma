@@ -19,6 +19,13 @@ type TimeDepositRepository struct {
 	AppDB *sqlx.DB
 }
 
+func NewTimeDepositRepository(dwhDB, appDB *sqlx.DB) *TimeDepositRepository {
+	return &TimeDepositRepository{
+		DwhDB: dwhDB,
+		AppDB: appDB,
+	}
+}
+
 func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, startDate, endDate string) ([]models.TimeDeposit, error) {
 	start, err := time.Parse(constants.DateFormat, startDate)
 	if err != nil {
@@ -46,7 +53,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 		ORDER BY as_of_date
 	`,
 		strings.Join(dbFields, ", "),
-		constants.TimeDepositTodayTable,
+		constants.TimeDepositHistoryTable,
 	)
 
 	var timeDeposits []models.DwhTimeDeposit

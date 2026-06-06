@@ -1,0 +1,100 @@
+package services
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/ibldzn/alma/internal/adapters/fincloud"
+	"github.com/ibldzn/alma/internal/adapters/utils"
+	"github.com/ibldzn/alma/internal/interfaces"
+	"github.com/ibldzn/alma/internal/models"
+)
+
+type FincloudService struct {
+	Config             fincloud.Config
+	Credentials        fincloud.Credentials
+	TimeDepositService interfaces.ITimeDepositService
+}
+
+func NewFincloudService(
+	config fincloud.Config,
+	credentials fincloud.Credentials,
+	timeDepositService interfaces.ITimeDepositService,
+) *FincloudService {
+	return &FincloudService{
+		Config:             config,
+		Credentials:        credentials,
+		TimeDepositService: timeDepositService,
+	}
+}
+
+func (s *FincloudService) SyncTimeDeposits(ctx context.Context) error {
+	client, err := fincloud.NewClient(s.Config)
+	if err != nil {
+		return err
+	}
+
+	session, err := client.Login(ctx, s.Credentials)
+	if err != nil {
+		return err
+	}
+	defer client.Logout(ctx, session.ID)
+
+	ctx = fincloud.WithFincloudSessionID(ctx, session.ID)
+
+	report, err := client.DownloadReport(ctx, "Time Deposit Account Balance Detail Today", "")
+	if err != nil {
+		return err
+	}
+
+	timeDeposits, err := prepareDataFromReport(report, func(headers, record []string) (models.TimeDeposit, error) {
+		var td models.TimeDeposit
+		err := td.FromCSV(headers, record)
+		return td, err
+	})
+	if err != nil {
+		return err
+	}
+
+	return s.TimeDepositService.UpsertTimeDeposits(ctx, timeDeposits)
+}
+
+func (s *FincloudService) KickOffScheduleSync(ctx context.Context) error {
+	if err := s.SyncTimeDeposits(ctx); err != nil {
+		log.Printf("initial sync of time deposits failed: %v", err)
+	}
+
+	ticker := time.NewTicker(3 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := s.SyncTimeDeposits(ctx); err != nil {
+				log.Printf("scheduled sync of time deposits failed: %v", err)
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func prepareDataFromReport[T any](report string, parser func(headers, record []string) (T, error)) ([]T, error) {
+	headers, records, err := utils.TransposeCSV([]byte(report), '|')
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]T, len(records))
+	for i, record := range records {
+		result, err := parser(headers, record)
+		if err != nil {
+			return nil, fmt.Errorf("parse report row %d: %w", i+1, err)
+		}
+		results[i] = result
+	}
+
+	return results, nil
+}

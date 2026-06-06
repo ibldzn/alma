@@ -11,6 +11,12 @@ type TimeDepositService struct {
 	TimeDepositRepo interfaces.ITimeDepositRepository
 }
 
+func NewTimeDepositService(repo interfaces.ITimeDepositRepository) *TimeDepositService {
+	return &TimeDepositService{
+		TimeDepositRepo: repo,
+	}
+}
+
 func (s *TimeDepositService) GetTimeDepositHistory(ctx context.Context, startDate, endDate string) ([]models.TimeDeposit, error) {
 	return s.TimeDepositRepo.GetTimeDepositHistory(ctx, startDate, endDate)
 }
