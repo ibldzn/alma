@@ -46,7 +46,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 		return nil, err
 	}
 
-	query := fmt.Sprintf(`
+	dwhQuery := fmt.Sprintf(`
 		SELECT %s
 		FROM %s
 		WHERE as_of_date BETWEEN ? AND ?
@@ -55,10 +55,8 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 		strings.Join(dbFields, ", "),
 		constants.TimeDepositHistoryTable,
 	)
-
 	var timeDeposits []models.DwhTimeDeposit
-	err = r.DwhDB.SelectContext(ctx, &timeDeposits, query, startDate, endDate)
-	if err != nil {
+	if err = r.DwhDB.SelectContext(ctx, &timeDeposits, dwhQuery, startDate, endDate); err != nil {
 		return nil, err
 	}
 
@@ -72,9 +70,21 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 
 	today := time.Now().In(time.FixedZone(constants.AsiaJakarta, 7*60*60))
 	if utils.IsDateEqual(today, end) {
+		appQuery := fmt.Sprintf(`
+			SELECT %s
+			FROM %s
+			WHERE date = ?
+		`,
+			strings.Join(dbFields, ", "),
+			constants.TimeDepositTodayTable,
+		)
 		var tdToday []models.TimeDeposit
-		err = r.AppDB.SelectContext(ctx, &tdToday, query, today.Format(constants.DateFormat), today.Format(constants.DateFormat))
-		if err != nil {
+		if err = r.AppDB.SelectContext(
+			ctx,
+			&tdToday,
+			appQuery,
+			today.Format(constants.DateFormat),
+		); err != nil {
 			return nil, err
 		}
 		results = append(results, tdToday...)
