@@ -4,7 +4,7 @@ import (
 	"github.com/ibldzn/alma/internal/adapters/utils"
 )
 
-type TimeDepositToday struct {
+type TimeDeposit struct {
 	ID                int     `db:"id" json:"-"`
 	Date              string  `db:"date" json:"date"`
 	BranchCode        string  `db:"branch_code" json:"branch_code"`
@@ -28,6 +28,6 @@ type TimeDepositToday struct {
 	UpdatedAt         string  `db:"updated_at" json:"updated_at"`
 }
 
-func (td *TimeDepositToday) FromCSV(headers, record []string) error {
+func (td *TimeDeposit) FromCSV(headers, record []string) error {
 	return utils.FromCSV(headers, record, td)
 }
