@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ibldzn/alma/internal/adapters/utils"
+	"github.com/ibldzn/alma/internal/utils"
 )
 
 type Saving struct {

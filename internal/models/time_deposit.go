@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ibldzn/alma/internal/adapters/utils"
 	"github.com/ibldzn/alma/internal/constants"
+	"github.com/ibldzn/alma/internal/utils"
 )
 
 type TimeDeposit struct {

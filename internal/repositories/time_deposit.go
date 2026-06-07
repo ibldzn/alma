@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ibldzn/alma/internal/adapters/utils"
 	"github.com/ibldzn/alma/internal/constants"
 	"github.com/ibldzn/alma/internal/models"
 	"github.com/ibldzn/alma/internal/types"
+	"github.com/ibldzn/alma/internal/utils"
 	"github.com/jmoiron/sqlx"
 )
 

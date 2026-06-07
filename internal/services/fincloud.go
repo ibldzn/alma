@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/ibldzn/alma/internal/adapters/fincloud"
-	"github.com/ibldzn/alma/internal/adapters/utils"
 	"github.com/ibldzn/alma/internal/constants"
 	"github.com/ibldzn/alma/internal/interfaces"
 	"github.com/ibldzn/alma/internal/models"
+	"github.com/ibldzn/alma/internal/utils"
 )
 
 type FincloudService struct {

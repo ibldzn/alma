@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ibldzn/alma/internal/adapters/utils"
 	"github.com/ibldzn/alma/internal/constants"
 	"github.com/ibldzn/alma/internal/models"
 	"github.com/ibldzn/alma/internal/types"
+	"github.com/ibldzn/alma/internal/utils"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -122,6 +122,7 @@ func (r *SavingRepository) UpsertSavings(ctx context.Context, savings []models.S
 }
 
 func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endDate string) ([]models.SavingSummaryRow, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 func (r *SavingRepository) getDwhSavings(ctx context.Context, date string) ([]models.DwhSaving, error) {
