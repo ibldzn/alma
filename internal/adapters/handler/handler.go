@@ -1,11 +1,15 @@
 package handler
 
 import (
-	"encoding/json"
+	"bytes"
+	"html/template"
+	"io/fs"
 	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/ibldzn/alma/internal/interfaces"
+	"github.com/ibldzn/alma/internal/utils"
+	"github.com/ibldzn/alma/internal/web"
 )
 
 type Handler struct {
@@ -13,6 +17,8 @@ type Handler struct {
 	SavingService      interfaces.ISavingService
 	LDRService         interfaces.ILDRService
 	SupermanService    interfaces.ISupermanService
+	templates          *template.Template
+	assetsHandler      http.Handler
 }
 
 func NewHandler(
@@ -21,73 +27,94 @@ func NewHandler(
 	ldrService interfaces.ILDRService,
 	supermanService interfaces.ISupermanService,
 ) *Handler {
+	templates := template.Must(template.ParseFS(web.Files, "templates/*.html"))
+
+	staticFS, err := fs.Sub(web.Files, "static")
+	if err != nil {
+		panic(err)
+	}
+
 	return &Handler{
 		TimeDepositService: timeDepositService,
 		SavingService:      savingService,
 		LDRService:         ldrService,
 		SupermanService:    supermanService,
+		templates:          templates,
+		assetsHandler:      http.StripPrefix("/assets/", http.FileServer(http.FS(staticFS))),
 	}
 }
 
 func (h *Handler) Router() http.Handler {
 	r := chi.NewRouter()
 
+	r.Handle("/assets/*", h.assetsHandler)
 	r.Get("/", h.Index)
 
 	return r
 }
 
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
-	startDate := r.URL.Query().Get("start_date")
-	if startDate == "" {
-		startDate = "2026-06-01"
-	}
-
-	endDate := r.URL.Query().Get("end_date")
-	if endDate == "" {
-		endDate = "2026-06-07"
-	}
-
-	timeDeposits, err := h.TimeDepositService.GetTimeDepositSummary(r.Context(), startDate, endDate)
+	period, err := resolveDashboardPeriod(r.URL.Query(), utils.GetTodayDateInJakarta())
 	if err != nil {
-		http.Error(w, "failed to get time deposit history: "+err.Error(), http.StatusInternalServerError)
+		h.renderIndex(w, http.StatusBadRequest, IndexPageData{
+			Period: period,
+			Cards:  emptyDashboardCards(),
+			Charts: emptyDashboardCharts(),
+			Error:  "Invalid date filter: " + err.Error(),
+		})
 		return
 	}
 
-	savings, err := h.SavingService.GetSavingSummary(r.Context(), startDate, endDate)
+	timeDeposits, err := h.TimeDepositService.GetTimeDepositSummary(r.Context(), period.StartDate, period.EndDate)
 	if err != nil {
-		http.Error(w, "failed to get saving history: "+err.Error(), http.StatusInternalServerError)
+		h.renderDashboardLoadError(w, period, "Unable to load time deposit data: "+err.Error())
 		return
 	}
 
-	ldr, err := h.LDRService.GetLDRHistory(r.Context(), startDate, endDate)
+	savings, err := h.SavingService.GetSavingSummary(r.Context(), period.StartDate, period.EndDate)
 	if err != nil {
-		http.Error(w, "failed to get LDR history: "+err.Error(), http.StatusInternalServerError)
+		h.renderDashboardLoadError(w, period, "Unable to load savings data: "+err.Error())
 		return
 	}
 
-	loanFromOtherBanks, err := h.SupermanService.GetSaldoNeracas(r.Context(), startDate, endDate, []string{"260"})
+	ldr, err := h.LDRService.GetLDRHistory(r.Context(), period.StartDate, period.EndDate)
 	if err != nil {
-		http.Error(w, "failed to get loan from other banks history: "+err.Error(), http.StatusInternalServerError)
+		h.renderDashboardLoadError(w, period, "Unable to load LDR data: "+err.Error())
 		return
 	}
 
-	jsonResponse := struct {
-		TimeDeposits       any `json:"time_deposits"`
-		Savings            any `json:"savings"`
-		LDR                any `json:"ldr"`
-		LoanFromOtherBanks any `json:"loan_from_other_banks"`
-	}{
-		TimeDeposits:       timeDeposits,
-		Savings:            savings,
-		LDR:                ldr,
-		LoanFromOtherBanks: loanFromOtherBanks,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(jsonResponse); err != nil {
-		http.Error(w, "failed to encode response: "+err.Error(), http.StatusInternalServerError)
+	loanFromOtherBanks, err := h.SupermanService.GetSaldoNeracas(r.Context(), period.StartDate, period.EndDate, []string{"260"})
+	if err != nil {
+		h.renderDashboardLoadError(w, period, "Unable to load Pinjaman Bank Lain data: "+err.Error())
 		return
 	}
+
+	data, err := buildIndexPageData(period, timeDeposits, savings, ldr, loanFromOtherBanks)
+	if err != nil {
+		h.renderDashboardLoadError(w, period, "Unable to prepare dashboard data: "+err.Error())
+		return
+	}
+
+	h.renderIndex(w, http.StatusOK, data)
+}
+
+func (h *Handler) renderDashboardLoadError(w http.ResponseWriter, period DashboardPeriod, message string) {
+	h.renderIndex(w, http.StatusInternalServerError, IndexPageData{
+		Period: period,
+		Cards:  emptyDashboardCards(),
+		Charts: emptyDashboardCharts(),
+		Error:  message,
+	})
+}
+
+func (h *Handler) renderIndex(w http.ResponseWriter, status int, data IndexPageData) {
+	var body bytes.Buffer
+	if err := h.templates.ExecuteTemplate(&body, "index.html", data); err != nil {
+		http.Error(w, "failed to render dashboard: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = body.WriteTo(w)
 }

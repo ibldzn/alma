@@ -1,0 +1,358 @@
+:root {
+  --primary: #0066cc;
+  --primary-focus: #0071e3;
+  --primary-on-dark: #2997ff;
+  --ink: #1d1d1f;
+  --ink-muted: #7a7a7a;
+  --canvas: #ffffff;
+  --parchment: #f5f5f7;
+  --pearl: #fafafc;
+  --dark: #272729;
+  --black: #000000;
+  --hairline: #e0e0e0;
+  --danger: #b00020;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color: var(--ink);
+  font-family: "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--parchment);
+}
+
+body {
+  margin: 0;
+  background: var(--parchment);
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.47;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.global-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 44px;
+  background: var(--black);
+  color: #ffffff;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1180px, calc(100% - 32px));
+  height: 44px;
+  margin: 0 auto;
+  font-size: 12px;
+  letter-spacing: -0.12px;
+}
+
+.brand {
+  font-weight: 600;
+}
+
+.nav-meta {
+  color: #cccccc;
+}
+
+.sub-nav {
+  position: sticky;
+  top: 44px;
+  z-index: 9;
+  background: rgba(245, 245, 247, 0.88);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.sub-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(1180px, calc(100% - 32px));
+  min-height: 76px;
+  margin: 0 auto;
+  padding: 12px 0;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -0.12px;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.19;
+}
+
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.filter-form label {
+  display: grid;
+  gap: 4px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.filter-form select,
+.filter-form input {
+  height: 44px;
+  min-width: 142px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 9999px;
+  background: var(--canvas);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 0 16px;
+}
+
+.filter-form select {
+  min-width: 112px;
+}
+
+.filter-form button {
+  height: 44px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 17px;
+  padding: 0 22px;
+}
+
+.filter-form button:focus-visible,
+.filter-form input:focus-visible,
+.filter-form select:focus-visible {
+  outline: 2px solid var(--primary-focus);
+  outline-offset: 2px;
+}
+
+.filter-form button:active {
+  transform: scale(0.95);
+}
+
+main {
+  overflow: hidden;
+}
+
+.alert-band {
+  background: #fff5f6;
+  color: var(--danger);
+  border-bottom: 1px solid #ffd4da;
+}
+
+.alert-band p {
+  width: min(980px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 16px 0;
+  font-size: 14px;
+}
+
+.hero-section {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  padding: 80px 24px 72px;
+  background: var(--canvas);
+  text-align: center;
+}
+
+.hero-copy {
+  max-width: 860px;
+}
+
+.hero-copy h2 {
+  margin-bottom: 0;
+  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(34px, 5vw, 56px);
+  font-weight: 600;
+  line-height: 1.07;
+  letter-spacing: -0.28px;
+}
+
+.metric-section,
+.chart-section {
+  padding: 80px 0;
+}
+
+.metric-section {
+  background: var(--parchment);
+}
+
+.chart-section {
+  background: var(--canvas);
+}
+
+.chart-section--dark {
+  background: var(--dark);
+  color: #ffffff;
+}
+
+.section-heading {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto 32px;
+}
+
+.section-heading h2 {
+  margin-bottom: 0;
+  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.section-heading--dark .eyebrow {
+  color: #cccccc;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.metric-card {
+  min-height: 178px;
+  padding: 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--canvas);
+}
+
+.card-title {
+  margin-bottom: 20px;
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.29;
+  letter-spacing: -0.224px;
+}
+
+.card-value {
+  margin-bottom: 16px;
+  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(28px, 3.8vw, 40px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.card-change {
+  margin-bottom: 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+}
+
+.card-change--positive {
+  color: var(--primary);
+}
+
+.card-change--negative {
+  color: var(--danger);
+}
+
+.chart-panel {
+  width: min(1180px, calc(100% - 32px));
+  height: 420px;
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  background: var(--canvas);
+}
+
+.chart-section--dark .chart-panel {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.chart-panel canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .sub-nav-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .filter-form {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .nav-meta {
+    display: none;
+  }
+
+  .filter-form,
+  .filter-form label,
+  .filter-form select,
+  .filter-form input,
+  .filter-form button {
+    width: 100%;
+  }
+
+  .hero-section,
+  .metric-section,
+  .chart-section {
+    padding: 48px 0;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-panel {
+    height: 340px;
+    padding: 16px;
+  }
+}

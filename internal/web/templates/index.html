@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ALMA Dashboard</title>
+  <link rel="stylesheet" href="/assets/css/dashboard.css">
+  <script defer src="/assets/js/chart.umd.min.js"></script>
+  <script defer src="/assets/js/dashboard.js"></script>
+</head>
+<body>
+  <header class="global-nav">
+    <div class="nav-inner">
+      <a class="brand" href="/">ALMA</a>
+      <span class="nav-meta">Internal Banking Dashboard</span>
+    </div>
+  </header>
+
+  <section class="sub-nav" aria-label="Dashboard filters">
+    <div class="sub-nav-inner">
+      <div>
+        <p class="eyebrow">Dashboard</p>
+        <h1>Funding &amp; Liquidity</h1>
+      </div>
+
+      <form class="filter-form" method="get" action="/">
+        <label>
+          <span>Range</span>
+          <select name="range">
+            <option value="MTD"{{ if .Period.IsMTD }} selected{{ end }}>MTD</option>
+            <option value="YTD"{{ if .Period.IsYTD }} selected{{ end }}>YTD</option>
+            <option value="custom"{{ if .Period.IsCustom }} selected{{ end }}>Custom</option>
+          </select>
+        </label>
+        <label>
+          <span>Start</span>
+          <input type="date" name="start_date" value="{{ .Period.StartDate }}">
+        </label>
+        <label>
+          <span>End</span>
+          <input type="date" name="end_date" value="{{ .Period.EndDate }}">
+        </label>
+        <button type="submit">Apply</button>
+      </form>
+    </div>
+  </section>
+
+  <main>
+    {{ if .Error }}
+      <section class="alert-band" role="alert">
+        <p>{{ .Error }}</p>
+      </section>
+    {{ end }}
+
+    <section class="hero-section">
+      <div class="hero-copy">
+        <p class="eyebrow">{{ .Period.StartDate }} to {{ .Period.EndDate }}</p>
+        <h2>Deposit composition and LDR movement.</h2>
+      </div>
+    </section>
+
+    <section class="metric-section">
+      <div class="section-heading">
+        <p class="eyebrow">KPI</p>
+        <h2>Current Position</h2>
+      </div>
+
+      <div class="card-grid">
+        {{ range .Cards.Items }}
+          <article class="metric-card">
+            <p class="card-title">{{ .Title }}</p>
+            <p class="card-value">{{ .DisplayValue }}</p>
+            <p class="card-change card-change--{{ .ChangeTone }}">{{ .ChangeLabel }}</p>
+          </article>
+        {{ end }}
+      </div>
+    </section>
+
+    <section class="chart-section chart-section--dark">
+      <div class="section-heading section-heading--dark">
+        <p class="eyebrow">Historical Deposits</p>
+        <h2>ABP, Perorangan, and Savings</h2>
+      </div>
+
+      <div class="chart-panel">
+        {{ if .Charts.HasHistoricalDeposits }}
+          <canvas id="historical-deposits-chart" aria-label="Historical deposits chart" role="img"></canvas>
+        {{ else }}
+          <div class="empty-state">No deposit data for selected period.</div>
+        {{ end }}
+      </div>
+    </section>
+
+    <section class="chart-section">
+      <div class="section-heading">
+        <p class="eyebrow">Historical LDR</p>
+        <h2>Consolidated LDR</h2>
+      </div>
+
+      <div class="chart-panel">
+        {{ if .Charts.HasHistoricalLDR }}
+          <canvas id="historical-ldr-chart" aria-label="Historical LDR chart" role="img"></canvas>
+        {{ else }}
+          <div class="empty-state">No LDR data for selected period.</div>
+        {{ end }}
+      </div>
+    </section>
+  </main>
+
+  <script type="application/json" id="historical-deposits-data">{{ .Charts.HistoricalDepositsJSON }}</script>
+  <script type="application/json" id="historical-ldr-data">{{ .Charts.HistoricalLDRJSON }}</script>
+</body>
+</html>
