@@ -6,6 +6,14 @@ import (
 	"github.com/ibldzn/alma/internal/constants"
 )
 
+func JakartaLocation() *time.Location {
+	return time.FixedZone(constants.AsiaJakarta, 7*60*60)
+}
+
+func ParseDateInJakarta(date string) (time.Time, error) {
+	return time.ParseInLocation(constants.DateFormat, date, JakartaLocation())
+}
+
 func IsDateEqual(d1, d2 time.Time) bool {
 	y1, m1, day1 := d1.Date()
 	y2, m2, day2 := d2.Date()
@@ -14,5 +22,11 @@ func IsDateEqual(d1, d2 time.Time) bool {
 }
 
 func GetTodayInJakarta() time.Time {
-	return time.Now().In(time.FixedZone(constants.AsiaJakarta, 7*60*60))
+	return time.Now().In(JakartaLocation())
+}
+
+func GetTodayDateInJakarta() time.Time {
+	now := GetTodayInJakarta()
+	year, month, day := now.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, now.Location())
 }
