@@ -41,41 +41,60 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 		return nil, types.ErrInvalidDateRange
 	}
 
-	dbFields, err := utils.DBFields[models.DwhTimeDeposit]()
-	if err != nil {
-		return nil, err
+	today := utils.GetTodayInJakarta()
+	dwhEnd := end
+	if utils.IsDateEqual(today, end) {
+		dwhEnd = end.AddDate(0, 0, -1)
 	}
 
-	dwhQuery := fmt.Sprintf(`
-		SELECT %s
-		FROM %s
-		WHERE as_of_date BETWEEN ? AND ?
-		ORDER BY as_of_date
-	`,
-		strings.Join(dbFields, ", "),
-		constants.TimeDepositHistoryTable,
-	)
-	var timeDeposits []models.DwhTimeDeposit
-	if err = r.DwhDB.SelectContext(ctx, &timeDeposits, dwhQuery, startDate, endDate); err != nil {
-		return nil, err
-	}
-
-	results := make([]models.TimeDeposit, len(timeDeposits))
-	for i, td := range timeDeposits {
-		results[i], err = td.ToTimeDeposit()
+	results := make([]models.TimeDeposit, 0)
+	if !dwhEnd.Before(start) {
+		dwhFields, err := utils.DBFields[models.DwhTimeDeposit]()
 		if err != nil {
-			return nil, types.ErrUnableToMapDwhToAppModel
+			return nil, err
+		}
+
+		dwhQuery := fmt.Sprintf(`
+				SELECT %s
+				FROM %s
+				WHERE as_of_date BETWEEN ? AND ?
+				ORDER BY as_of_date
+			`,
+			strings.Join(dwhFields, ", "),
+			constants.TimeDepositHistoryTable,
+		)
+		var timeDeposits []models.DwhTimeDeposit
+		if err = r.DwhDB.SelectContext(
+			ctx,
+			&timeDeposits,
+			dwhQuery,
+			startDate,
+			dwhEnd.Format(constants.DateFormat),
+		); err != nil {
+			return nil, err
+		}
+
+		results = make([]models.TimeDeposit, len(timeDeposits))
+		for i, td := range timeDeposits {
+			results[i], err = td.ToTimeDeposit()
+			if err != nil {
+				return nil, types.ErrUnableToMapDwhToAppModel
+			}
 		}
 	}
 
-	today := utils.GetTodayInJakarta()
 	if utils.IsDateEqual(today, end) {
+		appFields, err := utils.DBFields[models.TimeDeposit]()
+		if err != nil {
+			return nil, err
+		}
+
 		appQuery := fmt.Sprintf(`
 			SELECT %s
 			FROM %s
 			WHERE date = ?
 		`,
-			strings.Join(dbFields, ", "),
+			strings.Join(appFields, ", "),
 			constants.TimeDepositTodayTable,
 		)
 		var tdToday []models.TimeDeposit
@@ -123,7 +142,7 @@ func (r *TimeDepositRepository) UpsertTimeDeposits(ctx context.Context, timeDepo
 		utils.GenerateUpdateSetClause(dbFields, "date", "account_no"),
 	)
 
-	tx, err := r.AppDB.Beginx()
+	tx, err := r.AppDB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -135,7 +154,7 @@ func (r *TimeDepositRepository) UpsertTimeDeposits(ctx context.Context, timeDepo
 		}
 	}()
 
-	stmt, err := tx.PrepareNamed(query)
+	stmt, err := tx.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return err
 	}

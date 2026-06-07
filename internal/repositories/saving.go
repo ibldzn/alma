@@ -27,12 +27,12 @@ func NewSavingRepository(appDB, dwhDB *sqlx.DB) *SavingRepository {
 }
 
 func (r *SavingRepository) GetSavingHistory(ctx context.Context, date string) ([]models.Saving, error) {
-	d, err := time.Parse(constants.DateFormat, date)
+	d, err := utils.ParseDateInJakarta(date)
 	if err != nil {
 		return nil, err
 	}
 
-	today := utils.GetTodayInJakarta()
+	today := utils.GetTodayDateInJakarta()
 	if d.Before(today) {
 		dwhSavings, err := r.getDwhSavings(ctx, date)
 		if err != nil {
@@ -83,7 +83,7 @@ func (r *SavingRepository) UpsertSavings(ctx context.Context, savings []models.S
 		utils.GenerateUpdateSetClause(dbFields, "date", "account_no"),
 	)
 
-	tx, err := r.AppDB.Beginx()
+	tx, err := r.AppDB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (r *SavingRepository) UpsertSavings(ctx context.Context, savings []models.S
 		}
 	}()
 
-	stmt, err := tx.PrepareNamed(query)
+	stmt, err := tx.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return err
 	}
@@ -122,12 +122,12 @@ func (r *SavingRepository) UpsertSavings(ctx context.Context, savings []models.S
 }
 
 func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endDate string) ([]models.SavingSummaryRow, error) {
-	start, err := time.Parse(constants.DateFormat, startDate)
+	start, err := utils.ParseDateInJakarta(startDate)
 	if err != nil {
 		return nil, err
 	}
 
-	end, err := time.Parse(constants.DateFormat, endDate)
+	end, err := utils.ParseDateInJakarta(endDate)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endD
 		return nil, types.ErrInvalidDateRange
 	}
 
-	today := utils.GetTodayInJakarta()
+	today := utils.GetTodayDateInJakarta()
 	if end.After(today) {
 		return nil, types.ErrEndDateCannotBeInTheFuture
 	}
@@ -144,7 +144,7 @@ func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endD
 	var rows []models.SavingSummaryRow
 	if utils.IsDateEqual(end, today) {
 		appQuery := fmt.Sprintf(`
-			SELECT date, product_id, SUM(credit_balance) AS balance
+			SELECT DATE_FORMAT(date, '%%Y-%%m-%%d') AS date, product_id, SUM(credit_balance) AS balance
 			FROM %s
 			WHERE date = ?
 			AND product_id != ?
@@ -164,38 +164,44 @@ func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endD
 		}
 	}
 
-	dwhQuery := fmt.Sprintf(`
-		SELECT
-			DATE_FORMAT(as_of_date, '%%Y-%%m-%%d') AS date,
-			product_i_d AS product_id,
-			SUM(
-				CAST(
-					NULLIF(REPLACE(TRIM(credit_balance), ',', ''), '')
-					AS DECIMAL(18, 2)
-				)
-			) AS balance
-		FROM %s
-		WHERE as_of_date BETWEEN ? AND ?
-		AND COALESCE(product_i_d, '') != ?
-		GROUP BY as_of_date, product_i_d
-		ORDER BY as_of_date, product_i_d
-	`,
-		constants.SavingsHistoryTable,
-	)
-
-	dwhRows := make([]models.SavingSummaryRow, 0)
-	if err := r.DwhDB.SelectContext(
-		ctx,
-		&dwhRows,
-		dwhQuery,
-		startDate,
-		end.AddDate(0, 0, -1).Format(constants.DateFormat),
-		constants.TabInternalProductID,
-	); err != nil {
-		return nil, err
+	dwhEnd := end
+	if utils.IsDateEqual(end, today) {
+		dwhEnd = end.AddDate(0, 0, -1)
 	}
+	if !dwhEnd.Before(start) {
+		dwhQuery := fmt.Sprintf(`
+				SELECT
+					DATE_FORMAT(as_of_date, '%%Y-%%m-%%d') AS date,
+					product_i_d AS product_id,
+					SUM(
+						CAST(
+							NULLIF(REPLACE(TRIM(credit_balance), ',', ''), '')
+							AS DECIMAL(18, 2)
+						)
+					) AS balance
+				FROM %s
+				WHERE as_of_date BETWEEN ? AND ?
+				AND COALESCE(product_i_d, '') != ?
+				GROUP BY as_of_date, product_i_d
+				ORDER BY as_of_date, product_i_d
+			`,
+			constants.SavingsHistoryTable,
+		)
 
-	rows = append(rows, dwhRows...)
+		dwhRows := make([]models.SavingSummaryRow, 0)
+		if err := r.DwhDB.SelectContext(
+			ctx,
+			&dwhRows,
+			dwhQuery,
+			startDate,
+			dwhEnd.Format(constants.DateFormat),
+			constants.TabInternalProductID,
+		); err != nil {
+			return nil, err
+		}
+
+		rows = append(rows, dwhRows...)
+	}
 
 	return rows, nil
 }

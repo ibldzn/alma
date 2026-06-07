@@ -90,7 +90,7 @@ func (s *FincloudService) SyncSavings(ctx context.Context) error {
 
 	savings, err := prepareDataFromReport(report, func(headers, record []string) (models.Saving, error) {
 		var s models.Saving
-		s.Date = time.Now().In(time.FixedZone(constants.AsiaJakarta, 7*60*60)).Format(constants.DateFormat)
+		s.Date = utils.GetTodayInJakarta().Format(constants.DateFormat)
 		err := s.FromCSV(headers, record)
 		return s, err
 	})

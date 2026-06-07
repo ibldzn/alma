@@ -70,6 +70,9 @@ func (dwh *DwhSaving) ToSaving() (Saving, error) {
 	if dwh == nil {
 		return Saving{}, fmt.Errorf("nil DwhSavings")
 	}
+	if dwh.AsOfDate == nil {
+		return Saving{}, fmt.Errorf("missing as_of_date")
+	}
 
 	optionalString := func(field *string) string {
 		if field == nil {
