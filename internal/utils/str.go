@@ -22,6 +22,7 @@ func ParseFloatField(raw string) (float64, error) {
 	// 1,234.56
 	// 1234,56
 	// 1.234,56
+	// 1,234
 	if strings.Contains(s, ",") && strings.Contains(s, ".") {
 		lastComma := strings.LastIndex(s, ",")
 		lastDot := strings.LastIndex(s, ".")
@@ -35,8 +36,13 @@ func ParseFloatField(raw string) (float64, error) {
 			s = strings.ReplaceAll(s, ",", "")
 		}
 	} else if strings.Contains(s, ",") {
-		// Assume comma is decimal separator: 6,75 => 6.75
-		s = strings.ReplaceAll(s, ",", ".")
+		parts := strings.Split(s, ",")
+		if isCommaThousands(parts) {
+			s = strings.Join(parts, "")
+		} else {
+			// Indonesian-style decimal: 6,75
+			s = strings.ReplaceAll(s, ",", ".")
+		}
 	}
 
 	value, err := strconv.ParseFloat(s, 64)
@@ -45,4 +51,39 @@ func ParseFloatField(raw string) (float64, error) {
 	}
 
 	return value, nil
+}
+
+func isCommaThousands(parts []string) bool {
+	if len(parts) < 2 {
+		return false
+	}
+
+	first := parts[0]
+	if first == "" {
+		return false
+	}
+	if first[0] == '-' || first[0] == '+' {
+		first = first[1:]
+	}
+	if first == "" || len(first) > 3 || !allDigits(first) {
+		return false
+	}
+
+	for _, part := range parts[1:] {
+		if len(part) != 3 || !allDigits(part) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func allDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+
+	return true
 }
