@@ -32,7 +32,7 @@ func (r *SavingRepository) GetSavingHistory(ctx context.Context, date string) ([
 		return nil, err
 	}
 
-	today := time.Now().In(time.FixedZone(constants.AsiaJakarta, 7*60*60))
+	today := utils.GetTodayInJakarta()
 	if d.Before(today) {
 		dwhSavings, err := r.getDwhSavings(ctx, date)
 		if err != nil {

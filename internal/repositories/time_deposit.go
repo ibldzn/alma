@@ -68,7 +68,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 		}
 	}
 
-	today := time.Now().In(time.FixedZone(constants.AsiaJakarta, 7*60*60))
+	today := utils.GetTodayInJakarta()
 	if utils.IsDateEqual(today, end) {
 		appQuery := fmt.Sprintf(`
 			SELECT %s
