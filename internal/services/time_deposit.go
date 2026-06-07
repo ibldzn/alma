@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/ibldzn/alma/internal/interfaces"
@@ -63,7 +64,7 @@ func (s *TimeDepositService) GetTimeDepositSummary(ctx context.Context, startDat
 		results[i] = models.TimeDepositSummaryRow{
 			Date:      saldoNeraca.Date,
 			ProductID: productID,
-			Balance:   saldoNeraca.SaldoAkhir,
+			Balance:   math.Abs(saldoNeraca.SaldoAkhir),
 		}
 	}
 
