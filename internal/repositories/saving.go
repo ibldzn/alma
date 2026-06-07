@@ -26,71 +26,31 @@ func NewSavingRepository(appDB, dwhDB *sqlx.DB) *SavingRepository {
 	}
 }
 
-func (r *SavingRepository) GetSavingHistory(ctx context.Context, startDate, endDate string) ([]models.Saving, error) {
-	start, err := time.Parse(constants.DateFormat, startDate)
+func (r *SavingRepository) GetSavingHistory(ctx context.Context, date string) ([]models.Saving, error) {
+	d, err := time.Parse(constants.DateFormat, date)
 	if err != nil {
 		return nil, err
-	}
-
-	end, err := time.Parse(constants.DateFormat, endDate)
-	if err != nil {
-		return nil, err
-	}
-
-	if end.Before(start) {
-		return nil, types.ErrInvalidDateRange
-	}
-
-	dbFields, err := utils.DBFields[models.DwhSaving]()
-	if err != nil {
-		return nil, err
-	}
-
-	dwhQuery := fmt.Sprintf(`
-		SELECT %s
-		FROM %s
-		WHERE as_of_date BETWEEN ? AND ?
-		ORDER BY as_of_date
-	`,
-		strings.Join(dbFields, ", "),
-		constants.SavingsHistoryTable,
-	)
-	var savings []models.DwhSaving
-	if err = r.DwhDB.SelectContext(ctx, &savings, dwhQuery, startDate, endDate); err != nil {
-		return nil, err
-	}
-
-	results := make([]models.Saving, len(savings))
-	for i, td := range savings {
-		results[i], err = td.ToSaving()
-		if err != nil {
-			return nil, types.ErrUnableToMapDwhToAppModel
-		}
 	}
 
 	today := time.Now().In(time.FixedZone(constants.AsiaJakarta, 7*60*60))
-	if utils.IsDateEqual(today, end) {
-		appQuery := fmt.Sprintf(`
-			SELECT %s
-			FROM %s
-			WHERE date = ?
-		`,
-			strings.Join(dbFields, ", "),
-			constants.SavingsTodayTable,
-		)
-		var savingsToday []models.Saving
-		if err = r.AppDB.SelectContext(
-			ctx,
-			&savingsToday,
-			appQuery,
-			today.Format(constants.DateFormat),
-		); err != nil {
+	if d.Before(today) {
+		dwhSavings, err := r.getDwhSavings(ctx, date)
+		if err != nil {
 			return nil, err
 		}
-		results = append(results, savingsToday...)
+
+		results := make([]models.Saving, len(dwhSavings))
+		for i, s := range dwhSavings {
+			results[i], err = s.ToSaving()
+			if err != nil {
+				return nil, types.ErrUnableToMapDwhToAppModel
+			}
+		}
+
+		return results, nil
 	}
 
-	return results, nil
+	return r.getAppSavings(ctx, date)
 }
 
 func (r *SavingRepository) UpsertSavings(ctx context.Context, savings []models.Saving) error {
@@ -159,4 +119,62 @@ func (r *SavingRepository) UpsertSavings(ctx context.Context, savings []models.S
 	committed = true
 
 	return nil
+}
+
+func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endDate string) ([]models.SavingSummaryRow, error) {
+}
+
+func (r *SavingRepository) getDwhSavings(ctx context.Context, date string) ([]models.DwhSaving, error) {
+	dbFields, err := utils.DBFields[models.DwhSaving]()
+	if err != nil {
+		return nil, err
+	}
+
+	dwhQuery := fmt.Sprintf(`
+			SELECT %s
+			FROM %s
+			WHERE as_of_date = ?
+			ORDER BY as_of_date
+		`,
+		strings.Join(dbFields, ", "),
+		constants.SavingsHistoryTable,
+	)
+	var savings []models.DwhSaving
+	if err = r.DwhDB.SelectContext(ctx, &savings, dwhQuery, date); err != nil {
+		return nil, err
+	}
+
+	return savings, nil
+}
+
+func (r *SavingRepository) getAppSavings(ctx context.Context, date string) ([]models.Saving, error) {
+	asOfDate, err := time.Parse(constants.DateFormat, date)
+	if err != nil {
+		return nil, err
+	}
+
+	dbFields, err := utils.DBFields[models.Saving]()
+	if err != nil {
+		return nil, err
+	}
+
+	appQuery := fmt.Sprintf(`
+			SELECT %s
+			FROM %s
+			WHERE date = ?
+		`,
+		strings.Join(dbFields, ", "),
+		constants.SavingsTodayTable,
+	)
+	var savings []models.Saving
+	if err = r.AppDB.SelectContext(
+		ctx,
+		&savings,
+		appQuery,
+		asOfDate.Format(constants.DateFormat),
+	); err != nil {
+		return nil, err
+	}
+
+	return savings, nil
 }
