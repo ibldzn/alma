@@ -55,6 +55,12 @@ type DwhSaving struct {
 	IngestedAt time.Time `db:"ingested_at" json:"ingested_at"`
 }
 
+type SavingSummaryRow struct {
+	Date               string  `json:"date"`
+	ProductID          string  `json:"product_id"`
+	TotalCreditBalance float64 `json:"total_credit_balance"`
+}
+
 func (s *Saving) FromCSV(headers, record []string) error {
 	return utils.FromCSV(headers, record, s)
 }
