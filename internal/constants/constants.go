@@ -13,6 +13,9 @@ const (
 	// SavingsTodayTable is the name of the table in App DB that stores today's savings data.
 	SavingsTodayTable = "savings_balance_details"
 
+	// SupermanSaldoNeracaTable is the name of the table in SUPERMAN that stores saldo neraca data.
+	SupermanSaldoNeracaTable = "saldo_neracas"
+
 	// AsiaJakarta is the IANA timezone name for Asia/Jakarta.
 	AsiaJakarta = "Asia/Jakarta"
 
@@ -24,4 +27,10 @@ const (
 
 	// TabInternalProductID is the product ID for Tabungan Internal, which should be excluded from summaries.
 	TabInternalProductID = "TAB_INTERNAL"
+)
+
+var (
+	LDRBakiDebetAccounts        = []string{"121", "122"}
+	LDRFundingAccounts          = []string{"221", "2312200", "2312201"}
+	LDRFundingExclusionAccounts = []string{"2212111", "2212116", "2212199"}
 )
