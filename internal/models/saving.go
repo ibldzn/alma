@@ -56,9 +56,9 @@ type DwhSaving struct {
 }
 
 type SavingSummaryRow struct {
-	Date               string  `json:"date"`
-	ProductID          string  `json:"product_id"`
-	TotalCreditBalance float64 `json:"total_credit_balance"`
+	Date      string  `db:"date" json:"date"`
+	ProductID string  `db:"product_id" json:"product_id"`
+	Balance   float64 `db:"balance" json:"balance"`
 }
 
 func (s *Saving) FromCSV(headers, record []string) error {
