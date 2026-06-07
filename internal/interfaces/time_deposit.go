@@ -14,5 +14,5 @@ type ITimeDepositRepository interface {
 type ITimeDepositService interface {
 	GetTimeDepositHistory(ctx context.Context, startDate, endDate string) ([]models.TimeDeposit, error)
 	UpsertTimeDeposits(ctx context.Context, timeDeposits []models.TimeDeposit) error
-	GetTimeDepositSummary(ctx context.Context, startDate, endDate string) (map[string]float64, error)
+	GetTimeDepositSummary(ctx context.Context, startDate, endDate string) ([]models.TimeDepositSummaryRow, error)
 }

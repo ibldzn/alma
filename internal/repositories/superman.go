@@ -28,10 +28,11 @@ func (r *SupermanRepository) GetSaldoNeracas(ctx context.Context, startDate, end
 		SELECT
 			DATE_FORMAT(tanggal, '%%Y-%%m-%%d') AS date,
 			TRIM(noakun) AS noakun,
-			saldoakhir AS saldoakhir
+			SUM(saldoakhir) AS saldoakhir
 		FROM %s
 		WHERE tanggal BETWEEN ? AND ?
 			AND TRIM(noakun) IN (?)
+		GROUP BY tanggal, noakun
 		ORDER BY tanggal, noakun
 	`,
 		constants.SupermanSaldoNeracaTable,

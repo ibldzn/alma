@@ -51,14 +51,14 @@ func main() {
 	ensureOk("initializing database connections", err)
 	defer db.Close()
 
-	timeDepositRepository := repositories.NewTimeDepositRepository(db.AppDb, db.Dwh)
-	timeDepositService := services.NewTimeDepositService(timeDepositRepository)
-
-	savingRepository := repositories.NewSavingRepository(db.AppDb, db.Dwh)
-	savingService := services.NewSavingService(savingRepository)
-
 	supermanRepository := repositories.NewSupermanRepository(db.Superman)
 	supermanService := services.NewSupermanService(supermanRepository)
+
+	timeDepositRepository := repositories.NewTimeDepositRepository(db.AppDb, db.Dwh)
+	timeDepositService := services.NewTimeDepositService(timeDepositRepository, supermanService)
+
+	savingRepository := repositories.NewSavingRepository(db.AppDb, db.Dwh)
+	savingService := services.NewSavingService(savingRepository, supermanService)
 
 	ldrService := services.NewLDRService(supermanService)
 	_ = ldrService

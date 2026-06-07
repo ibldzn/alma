@@ -59,6 +59,12 @@ type DwhTimeDeposit struct {
 	IngestedAt        time.Time `db:"ingested_at" json:"ingested_at"`
 }
 
+type TimeDepositSummaryRow struct {
+	Date      string  `json:"date"`
+	ProductID string  `json:"product_id"`
+	Balance   float64 `json:"balance"`
+}
+
 func (td *TimeDeposit) FromCSV(headers, record []string) error {
 	return utils.FromCSV(headers, record, td)
 }
