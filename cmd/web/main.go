@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -64,7 +66,11 @@ func main() {
 	savingService := services.NewSavingService(savingRepository, supermanService)
 
 	ldrService := services.NewLDRService(supermanService)
-	_ = ldrService
+
+	authRepository := repositories.NewAuthRepository(db.AppDb)
+	authService := services.NewAuthService(authRepository)
+	sessionManager, err := initSessionManager()
+	ensureOk("initializing session manager", err)
 
 	fincloudService := services.NewFincloudService(
 		fincloud.Config{},
@@ -88,15 +94,17 @@ func main() {
 		savingService,
 		ldrService,
 		supermanService,
+		authService,
+		sessionManager,
 	)
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    os.Getenv("ALMA_SERVER_ADDR"),
 		Handler: h.Router(),
 	}
 
 	go func() {
-		fmt.Println("starting server on :8080")
+		fmt.Println("starting server on " + os.Getenv("ALMA_SERVER_ADDR"))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			fmt.Fprintf(os.Stderr, "starting HTTP server: %v\n", err)
 			os.Exit(1)
@@ -114,6 +122,40 @@ func main() {
 	}
 
 	fmt.Println("shutting down gracefully...")
+}
+
+func initSessionManager() (*handler.SessionManager, error) {
+	secret := strings.TrimSpace(os.Getenv("ALMA_SESSION_SECRET"))
+	if secret == "" {
+		return nil, errors.New("ALMA_SESSION_SECRET is required")
+	}
+
+	ttl := 12 * time.Hour
+	if value := strings.TrimSpace(os.Getenv("ALMA_SESSION_TTL")); value != "" {
+		parsedTTL, err := time.ParseDuration(value)
+		if err != nil {
+			return nil, fmt.Errorf("parsing ALMA_SESSION_TTL: %w", err)
+		}
+		if parsedTTL <= 0 {
+			return nil, errors.New("ALMA_SESSION_TTL must be positive")
+		}
+		ttl = parsedTTL
+	}
+
+	secure := false
+	if value := strings.TrimSpace(os.Getenv("ALMA_COOKIE_SECURE")); value != "" {
+		parsedSecure, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, fmt.Errorf("parsing ALMA_COOKIE_SECURE: %w", err)
+		}
+		secure = parsedSecure
+	}
+
+	return handler.NewSessionManager(handler.SessionConfig{
+		Secret: []byte(secret),
+		TTL:    ttl,
+		Secure: secure,
+	})
 }
 
 func ensureOk(msg string, err error) {

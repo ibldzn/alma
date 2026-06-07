@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - ALMA Dashboard</title>
+    <link rel="stylesheet" href="/assets/css/dashboard.css" />
+  </head>
+  <body class="login-page">
+    <header class="global-nav">
+      <div class="nav-inner">
+        <a class="brand" href="/login">ALMA</a>
+        <span class="nav-meta">Bank DP TASPEN</span>
+      </div>
+    </header>
+
+    <main class="login-main">
+      <section class="login-section">
+        <div class="login-card">
+          <p class="eyebrow">Secure Access</p>
+          <h1>ALMA.</h1>
+          <p class="login-subtitle">Funding &amp; Liquidity Dashboard</p>
+
+          {{ if .Error }}
+          <div class="login-alert" role="alert">{{ .Error }}</div>
+          {{ end }}
+
+          <form class="login-form" method="post" action="/login">
+            <input type="hidden" name="next" value="{{ .Next }}" />
+            <label>
+              <span>Username</span>
+              <input
+                type="text"
+                name="username"
+                value="{{ .Username }}"
+                autocomplete="username"
+                required
+                autofocus
+              />
+            </label>
+            <label>
+              <span>Password</span>
+              <input
+                type="password"
+                name="password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <button type="submit">Sign In</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

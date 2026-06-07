@@ -12,7 +12,15 @@
     <header class="global-nav">
       <div class="nav-inner">
         <a class="brand" href="/">ALMA</a>
-        <span class="nav-meta">Bank DP TASPEN</span>
+        <div class="nav-actions">
+          <span class="nav-meta">Bank DP TASPEN</span>
+          {{ if .CurrentUser.Username }}
+          <span class="nav-user">{{ .CurrentUser.DisplayName }}</span>
+          <form class="logout-form" method="post" action="/logout">
+            <button class="nav-logout" type="submit">Logout</button>
+          </form>
+          {{ end }}
+        </div>
       </div>
     </header>
 

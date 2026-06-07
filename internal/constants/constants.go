@@ -16,6 +16,9 @@ const (
 	// SupermanSaldoNeracaTable is the name of the table in SUPERMAN that stores saldo neraca data.
 	SupermanSaldoNeracaTable = "saldo_neracas"
 
+	// UsersTable is the name of the table in App DB that stores dashboard users.
+	UsersTable = "users"
+
 	// AsiaJakarta is the IANA timezone name for Asia/Jakarta.
 	AsiaJakarta = "Asia/Jakarta"
 

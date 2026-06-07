@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ibldzn/alma/internal/models"
+	"github.com/ibldzn/alma/internal/types"
 	"github.com/ibldzn/alma/internal/utils"
 )
 
@@ -244,9 +245,10 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 			{Date: "2026-06-02", NoAkun: "260", SaldoAkhir: -15_000_000_000},
 		},
 	}
-	handler := NewHandler(timeDepositService, savingService, ldrService, supermanService)
+	handler, sessions := newTestHandler(t, timeDepositService, savingService, ldrService, supermanService, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=2026-06-01&end_date=2026-06-02", nil)
+	addAuthCookie(t, req, sessions)
 	rec := httptest.NewRecorder()
 
 	handler.Router().ServeHTTP(rec, req)
@@ -292,8 +294,9 @@ func TestIndexDateInputsDisabledOutsideCustomRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := NewHandler(&fakeTimeDepositService{}, &fakeSavingService{}, &fakeLDRService{}, &fakeSupermanService{})
+			handler, sessions := newTestHandler(t, nil, nil, nil, nil, nil)
 			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
+			addAuthCookie(t, req, sessions)
 			rec := httptest.NewRecorder()
 
 			handler.Router().ServeHTTP(rec, req)
@@ -314,9 +317,10 @@ func TestIndexDateInputsDisabledOutsideCustomRange(t *testing.T) {
 
 func TestIndexInvalidQueryRendersHTMLWithoutServiceCalls(t *testing.T) {
 	timeDepositService := &fakeTimeDepositService{}
-	handler := NewHandler(timeDepositService, &fakeSavingService{}, &fakeLDRService{}, &fakeSupermanService{})
+	handler, sessions := newTestHandler(t, timeDepositService, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=bad&end_date=2026-06-02", nil)
+	addAuthCookie(t, req, sessions)
 	rec := httptest.NewRecorder()
 
 	handler.Router().ServeHTTP(rec, req)
@@ -329,6 +333,120 @@ func TestIndexInvalidQueryRendersHTMLWithoutServiceCalls(t *testing.T) {
 	}
 	if body := rec.Body.String(); !strings.Contains(body, "Invalid date filter") || !strings.Contains(body, `value="bad"`) {
 		t.Fatalf("response body did not render invalid filter state: %s", body)
+	}
+}
+
+func TestDashboardRequiresAuthentication(t *testing.T) {
+	timeDepositService := &fakeTimeDepositService{}
+	handler, _ := newTestHandler(t, timeDepositService, nil, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+	if location := rec.Header().Get("Location"); location != "/login?next=%2F" {
+		t.Fatalf("Location = %q, want /login?next=%%2F", location)
+	}
+	if timeDepositService.called {
+		t.Fatal("time deposit service was called before auth")
+	}
+}
+
+func TestAssetsStayPublic(t *testing.T) {
+	handler, _ := newTestHandler(t, nil, nil, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/assets/css/dashboard.css", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, ":root") {
+		t.Fatalf("asset body missing css root: %s", body)
+	}
+}
+
+func TestLoginFormRenders(t *testing.T) {
+	handler, _ := newTestHandler(t, nil, nil, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/login?next=%2F", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{"ALMA.", `name="username"`, `name="password"`, `name="next" value="/"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("login body missing %q", want)
+		}
+	}
+}
+
+func TestLoginRejectsInvalidCredentials(t *testing.T) {
+	authService := &fakeAuthService{err: types.ErrInvalidCredentials}
+	handler, _ := newTestHandler(t, nil, nil, nil, nil, authService)
+	form := strings.NewReader("username=wrong&password=bad&next=%2F")
+	req := httptest.NewRequest(http.MethodPost, "/login", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	handler.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+	if authService.username != "wrong" || authService.password != "bad" {
+		t.Fatalf("auth credentials = %q/%q", authService.username, authService.password)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, invalidLoginMessage) {
+		t.Fatalf("login body missing invalid login message: %s", body)
+	}
+}
+
+func TestLoginSetsSessionCookie(t *testing.T) {
+	authService := &fakeAuthService{user: testUser()}
+	handler, _ := newTestHandler(t, nil, nil, nil, nil, authService)
+	form := strings.NewReader("username=haysan&password=secret&next=%2F")
+	req := httptest.NewRequest(http.MethodPost, "/login", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	handler.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if location := rec.Header().Get("Location"); location != "/" {
+		t.Fatalf("Location = %q, want /", location)
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != sessionCookieName || cookies[0].Value == "" {
+		t.Fatalf("session cookie = %+v", cookies)
+	}
+}
+
+func TestLogoutClearsSessionCookie(t *testing.T) {
+	handler, _ := newTestHandler(t, nil, nil, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if location := rec.Header().Get("Location"); location != "/login" {
+		t.Fatalf("Location = %q, want /login", location)
+	}
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != sessionCookieName || cookies[0].MaxAge >= 0 {
+		t.Fatalf("clear cookie = %+v", cookies)
 	}
 }
 
@@ -351,6 +469,68 @@ func assertCardValue(t *testing.T, card DashboardCard, want float64) {
 
 	if math.Abs(card.Value-want) > 0.0001 {
 		t.Fatalf("%s value = %v, want %v", card.Title, card.Value, want)
+	}
+}
+
+func newTestHandler(
+	t *testing.T,
+	timeDepositService *fakeTimeDepositService,
+	savingService *fakeSavingService,
+	ldrService *fakeLDRService,
+	supermanService *fakeSupermanService,
+	authService *fakeAuthService,
+) (*Handler, *SessionManager) {
+	t.Helper()
+
+	if timeDepositService == nil {
+		timeDepositService = &fakeTimeDepositService{}
+	}
+	if savingService == nil {
+		savingService = &fakeSavingService{}
+	}
+	if ldrService == nil {
+		ldrService = &fakeLDRService{}
+	}
+	if supermanService == nil {
+		supermanService = &fakeSupermanService{}
+	}
+	if authService == nil {
+		authService = &fakeAuthService{user: testUser()}
+	}
+
+	sessions, err := NewSessionManager(SessionConfig{
+		Secret: []byte("test-session-secret"),
+		TTL:    time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("NewSessionManager returned error: %v", err)
+	}
+
+	return NewHandler(
+		timeDepositService,
+		savingService,
+		ldrService,
+		supermanService,
+		authService,
+		sessions,
+	), sessions
+}
+
+func addAuthCookie(t *testing.T, req *http.Request, sessions *SessionManager) {
+	t.Helper()
+
+	cookie, err := sessions.NewCookie(testUser())
+	if err != nil {
+		t.Fatalf("NewCookie returned error: %v", err)
+	}
+	req.AddCookie(cookie)
+}
+
+func testUser() models.User {
+	return models.User{
+		ID:       1,
+		Name:     "Haytsam",
+		Username: "haytsam",
 	}
 }
 
@@ -412,4 +592,23 @@ type fakeSupermanService struct {
 func (f *fakeSupermanService) GetSaldoNeracas(ctx context.Context, startDate, endDate string, accounts []string) ([]models.SaldoNeraca, error) {
 	f.accounts = append([]string(nil), accounts...)
 	return f.rows, f.err
+}
+
+type fakeAuthService struct {
+	user     models.User
+	err      error
+	username string
+	password string
+}
+
+func (f *fakeAuthService) Authenticate(ctx context.Context, username, password string) (models.User, error) {
+	f.username = username
+	f.password = password
+	if f.err != nil {
+		return models.User{}, f.err
+	}
+	if f.user.ID == 0 {
+		f.user = testUser()
+	}
+	return f.user, nil
 }

@@ -23,10 +23,11 @@ const (
 )
 
 type IndexPageData struct {
-	Period DashboardPeriod
-	Cards  DashboardCards
-	Charts DashboardCharts
-	Error  string
+	Period      DashboardPeriod
+	Cards       DashboardCards
+	Charts      DashboardCharts
+	Error       string
+	CurrentUser SessionUser
 }
 
 type DashboardPeriod struct {
