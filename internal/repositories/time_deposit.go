@@ -15,14 +15,14 @@ import (
 )
 
 type TimeDepositRepository struct {
-	DwhDB *sqlx.DB
 	AppDB *sqlx.DB
+	DwhDB *sqlx.DB
 }
 
-func NewTimeDepositRepository(dwhDB, appDB *sqlx.DB) *TimeDepositRepository {
+func NewTimeDepositRepository(appDB, dwhDB *sqlx.DB) *TimeDepositRepository {
 	return &TimeDepositRepository{
-		DwhDB: dwhDB,
 		AppDB: appDB,
+		DwhDB: dwhDB,
 	}
 }
 
