@@ -138,7 +138,7 @@ func buildIndexPageData(
 		ABPDeposit:         makeMoneyCard("ABP Deposit", abpDeposits),
 		NonABPDeposit:      makeMoneyCard("Non ABP / Perorangan Deposit", nonABPDeposits),
 		Savings:            makeMoneyCard("Savings", savingsByDate),
-		LoanFromOtherBanks: makeMoneyCard("Pinjaman Bank Lain", loanByDate),
+		LoanFromOtherBanks: makeMoneyCard("Loan from Other Banks", loanByDate),
 		ConsolidatedLDR:    makeLDRCard("Consolidated LDR", ldrByDate),
 	}
 	cards.Items = []DashboardCard{
@@ -461,7 +461,7 @@ func emptyDashboardCards() DashboardCards {
 		ABPDeposit:         emptyDashboardCard("ABP Deposit", "money", "percent"),
 		NonABPDeposit:      emptyDashboardCard("Non ABP / Perorangan Deposit", "money", "percent"),
 		Savings:            emptyDashboardCard("Savings", "money", "percent"),
-		LoanFromOtherBanks: emptyDashboardCard("Pinjaman Bank Lain", "money", "percent"),
+		LoanFromOtherBanks: emptyDashboardCard("Loan from Other Banks", "money", "percent"),
 		ConsolidatedLDR:    emptyDashboardCard("Consolidated LDR", "percent", "percentage_point"),
 	}
 	cards.Items = []DashboardCard{
