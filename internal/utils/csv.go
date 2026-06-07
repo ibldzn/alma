@@ -127,14 +127,7 @@ func setField(field reflect.Value, rawValue string) error {
 		field.SetInt(value)
 
 	case reflect.Float32, reflect.Float64:
-		if rawValue == "" {
-			field.SetFloat(0)
-			return nil
-		}
-
-		normalized := strings.ReplaceAll(rawValue, ",", "")
-
-		value, err := strconv.ParseFloat(normalized, field.Type().Bits())
+		value, err := ParseFloatField(rawValue)
 		if err != nil {
 			return fmt.Errorf("expected decimal number, got %q: %w", rawValue, err)
 		}
