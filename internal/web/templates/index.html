@@ -12,7 +12,7 @@
     <header class="global-nav">
       <div class="nav-inner">
         <a class="brand" href="/">ALMA</a>
-        <span class="nav-meta">Internal Banking Dashboard</span>
+        <span class="nav-meta">Bank DP TASPEN</span>
       </div>
     </header>
 
@@ -53,7 +53,13 @@
               type="date"
               name="start_date"
               value="{{ .Period.StartDate }}"
-              {{ if not .Period.IsCustom }}disabled{{ end }}
+              {{
+              if
+              not
+              .Period.IsCustom
+              }}disabled{{
+              end
+              }}
             />
           </label>
           <label>
@@ -62,7 +68,13 @@
               type="date"
               name="end_date"
               value="{{ .Period.EndDate }}"
-              {{ if not .Period.IsCustom }}disabled{{ end }}
+              {{
+              if
+              not
+              .Period.IsCustom
+              }}disabled{{
+              end
+              }}
             />
           </label>
           <button type="submit">Apply</button>
