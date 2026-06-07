@@ -91,15 +91,26 @@ func NewClient(cfg Config) (*Client, error) {
 		cfg.UserAgent = DefaultUserAgent
 	}
 
-	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = http.DefaultClient
-	}
-
-	cfg.HTTPClient.Timeout = 2 * time.Minute
-	cfg.HTTPClient.Transport = &http.Transport{
+	defaultTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
+	}
+
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = &http.Client{
+			Timeout:   2 * time.Minute,
+			Transport: defaultTransport,
+		}
+	} else {
+		httpClient := *cfg.HTTPClient
+		if httpClient.Timeout == 0 {
+			httpClient.Timeout = 2 * time.Minute
+		}
+		if httpClient.Transport == nil {
+			httpClient.Transport = defaultTransport
+		}
+		cfg.HTTPClient = &httpClient
 	}
 
 	return &Client{cfg}, nil
