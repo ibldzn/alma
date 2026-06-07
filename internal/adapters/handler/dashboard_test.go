@@ -152,6 +152,46 @@ func TestMoneyChangeFromZeroIsSafe(t *testing.T) {
 	if card.DisplayChange != "N/A" {
 		t.Fatalf("DisplayChange = %q, want N/A", card.DisplayChange)
 	}
+	if card.ChangeLabel != "Naik Rp 100 (N/A)\n01 Jun 2026 \u2192 02 Jun 2026" {
+		t.Fatalf("ChangeLabel = %q", card.ChangeLabel)
+	}
+}
+
+func TestMoneyChangeLabelFormatting(t *testing.T) {
+	card := makeMoneyCard("Total Deposit", map[string]float64{
+		"2026-06-01": 604_800_000_000,
+		"2026-06-03": 612_360_000_000,
+	})
+
+	want := "Naik Rp 7,56 M (+1,25%)\n01 Jun 2026 \u2192 03 Jun 2026"
+	if card.ChangeLabel != want {
+		t.Fatalf("ChangeLabel = %q, want %q", card.ChangeLabel, want)
+	}
+	if card.ChangeTone != "positive" {
+		t.Fatalf("ChangeTone = %q, want positive", card.ChangeTone)
+	}
+}
+
+func TestLDRChangeToneIsInverted(t *testing.T) {
+	decreased := makeLDRCard("Consolidated LDR", map[string]float64{
+		"2026-06-01": 163.92,
+		"2026-06-03": 160,
+	})
+	wantDecreasedLabel := "Turun 3,92 pp (-3,92 pp)\n01 Jun 2026 \u2192 03 Jun 2026"
+	if decreased.ChangeLabel != wantDecreasedLabel {
+		t.Fatalf("decreased ChangeLabel = %q, want %q", decreased.ChangeLabel, wantDecreasedLabel)
+	}
+	if decreased.ChangeTone != "positive" {
+		t.Fatalf("decreased ChangeTone = %q, want positive", decreased.ChangeTone)
+	}
+
+	increased := makeLDRCard("Consolidated LDR", map[string]float64{
+		"2026-06-01": 160,
+		"2026-06-03": 163.92,
+	})
+	if increased.ChangeTone != "negative" {
+		t.Fatalf("increased ChangeTone = %q, want negative", increased.ChangeTone)
+	}
 }
 
 func TestFormatting(t *testing.T) {
@@ -163,6 +203,7 @@ func TestFormatting(t *testing.T) {
 		{name: "billions", got: formatCompactRupiah(612_340_000_000), want: "Rp 612,34 M"},
 		{name: "trillions", got: formatCompactRupiah(1_250_000_000_000), want: "Rp 1,25 T"},
 		{name: "percent", got: formatPercent(163.92), want: "163,92%"},
+		{name: "percentage point", got: formatPercentagePoint(3.92), want: "3,92 pp"},
 		{name: "signed percent", got: formatSignedPercent(1.25), want: "+1,25%"},
 		{name: "signed pp", got: formatSignedPercentagePoint(0.24), want: "+0,24 pp"},
 	}

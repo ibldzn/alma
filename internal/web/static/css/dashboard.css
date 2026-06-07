@@ -19,7 +19,13 @@
 
 html {
   color: var(--ink);
-  font-family: "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    "SF Pro Text",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   background: var(--parchment);
 }
 
@@ -101,7 +107,13 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    "SF Pro Display",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-size: 21px;
   font-weight: 600;
   line-height: 1.19;
@@ -195,7 +207,13 @@ main {
 
 .hero-copy h2 {
   margin-bottom: 0;
-  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    "SF Pro Display",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-size: clamp(34px, 5vw, 56px);
   font-weight: 600;
   line-height: 1.07;
@@ -227,7 +245,13 @@ main {
 
 .section-heading h2 {
   margin-bottom: 0;
-  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    "SF Pro Display",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-size: clamp(28px, 4vw, 40px);
   font-weight: 600;
   line-height: 1.1;
@@ -263,8 +287,14 @@ main {
 }
 
 .card-value {
-  margin-bottom: 16px;
-  font-family: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  margin-bottom: 5px;
+  font-family:
+    "SF Pro Display",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   font-size: clamp(28px, 3.8vw, 40px);
   font-weight: 600;
   line-height: 1.1;
@@ -274,7 +304,9 @@ main {
   margin-bottom: 0;
   color: var(--ink-muted);
   font-size: 14px;
+  line-height: 1.35;
   letter-spacing: -0.224px;
+  white-space: pre-line;
 }
 
 .card-change--positive {

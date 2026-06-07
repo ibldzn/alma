@@ -232,11 +232,31 @@ func sumSeries(seriesMaps ...map[string]float64) map[string]float64 {
 }
 
 func makeMoneyCard(title string, series map[string]float64) DashboardCard {
-	return makeSeriesCard(title, "money", "percent", series, formatCompactRupiah, calculatePercentChange, formatSignedPercent)
+	return makeSeriesCard(
+		title,
+		"money",
+		"percent",
+		series,
+		formatCompactRupiah,
+		formatCompactRupiah,
+		calculatePercentChange,
+		formatSignedPercent,
+		changeTone,
+	)
 }
 
 func makeLDRCard(title string, series map[string]float64) DashboardCard {
-	return makeSeriesCard(title, "percent", "percentage_point", series, formatPercent, calculatePercentagePointChange, formatSignedPercentagePoint)
+	return makeSeriesCard(
+		title,
+		"percent",
+		"percentage_point",
+		series,
+		formatPercent,
+		formatPercentagePoint,
+		calculatePercentagePointChange,
+		formatSignedPercentagePoint,
+		inverseChangeTone,
+	)
 }
 
 func makeSeriesCard(
@@ -245,8 +265,10 @@ func makeSeriesCard(
 	changeType string,
 	series map[string]float64,
 	formatValue func(float64) string,
+	formatDelta func(float64) string,
 	calculateChange func(first, last float64) (float64, bool),
 	formatChange func(float64) string,
+	toneForChange func(float64) string,
 ) DashboardCard {
 	dates := sortedMapDates(series)
 	card := DashboardCard{
@@ -267,20 +289,22 @@ func makeSeriesCard(
 	lastDate := dates[len(dates)-1]
 	first := series[firstDate]
 	last := series[lastDate]
+	delta := last - first
 	change, ok := calculateChange(first, last)
 
 	card.Value = last
 	card.DisplayValue = formatValue(last)
 	card.HasData = true
 	if !ok {
-		card.ChangeLabel = fmt.Sprintf("Change unavailable from %s to %s", firstDate, lastDate)
+		card.ChangeLabel = formatChangeLabel(delta, formatDelta(math.Abs(delta)), "N/A", firstDate, lastDate)
+		card.ChangeTone = toneForChange(delta)
 		return card
 	}
 
 	card.Change = change
 	card.DisplayChange = formatChange(change)
-	card.ChangeLabel = fmt.Sprintf("%s change from %s to %s", card.DisplayChange, firstDate, lastDate)
-	card.ChangeTone = changeTone(change)
+	card.ChangeLabel = formatChangeLabel(delta, formatDelta(math.Abs(delta)), card.DisplayChange, firstDate, lastDate)
+	card.ChangeTone = toneForChange(change)
 	card.HasChange = true
 	return card
 }
@@ -305,6 +329,47 @@ func changeTone(change float64) string {
 	default:
 		return "neutral"
 	}
+}
+
+func inverseChangeTone(change float64) string {
+	switch {
+	case change > 0:
+		return "negative"
+	case change < 0:
+		return "positive"
+	default:
+		return "neutral"
+	}
+}
+
+func formatChangeLabel(delta float64, deltaLabel, changeLabel, firstDate, lastDate string) string {
+	return fmt.Sprintf(
+		"%s %s (%s)\n%s \u2192 %s",
+		changeDirection(delta),
+		deltaLabel,
+		changeLabel,
+		formatDisplayDate(firstDate),
+		formatDisplayDate(lastDate),
+	)
+}
+
+func changeDirection(delta float64) string {
+	switch {
+	case delta > 0:
+		return "Naik"
+	case delta < 0:
+		return "Turun"
+	default:
+		return "Tetap"
+	}
+}
+
+func formatDisplayDate(date string) string {
+	parsed, err := time.Parse(constants.DateFormat, date)
+	if err != nil {
+		return date
+	}
+	return parsed.Format("02 Jan 2006")
 }
 
 func buildDashboardCharts(
@@ -451,6 +516,10 @@ func formatCompactRupiah(value float64) string {
 
 func formatPercent(value float64) string {
 	return formatDecimalComma(value, 2) + "%"
+}
+
+func formatPercentagePoint(value float64) string {
+	return formatDecimalComma(value, 2) + " pp"
 }
 
 func formatSignedPercent(value float64) string {
