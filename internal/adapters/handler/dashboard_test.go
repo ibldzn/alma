@@ -238,6 +238,39 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 	}
 }
 
+func TestIndexDateInputsDisabledOutsideCustomRange(t *testing.T) {
+	tests := []struct {
+		name         string
+		target       string
+		wantDisabled bool
+	}{
+		{name: "MTD", target: "/?range=MTD", wantDisabled: true},
+		{name: "YTD", target: "/?range=YTD", wantDisabled: true},
+		{name: "custom", target: "/?range=custom&start_date=2026-06-01&end_date=2026-06-02", wantDisabled: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := NewHandler(&fakeTimeDepositService{}, &fakeSavingService{}, &fakeLDRService{}, &fakeSupermanService{})
+			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
+			rec := httptest.NewRecorder()
+
+			handler.Router().ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+			}
+
+			body := rec.Body.String()
+			for _, name := range []string{"start_date", "end_date"} {
+				if got := inputTagHasAttribute(body, name, "disabled"); got != tt.wantDisabled {
+					t.Fatalf("%s disabled = %v, want %v", name, got, tt.wantDisabled)
+				}
+			}
+		})
+	}
+}
+
 func TestIndexInvalidQueryRendersHTMLWithoutServiceCalls(t *testing.T) {
 	timeDepositService := &fakeTimeDepositService{}
 	handler := NewHandler(timeDepositService, &fakeSavingService{}, &fakeLDRService{}, &fakeSupermanService{})
@@ -256,6 +289,20 @@ func TestIndexInvalidQueryRendersHTMLWithoutServiceCalls(t *testing.T) {
 	if body := rec.Body.String(); !strings.Contains(body, "Invalid date filter") || !strings.Contains(body, `value="bad"`) {
 		t.Fatalf("response body did not render invalid filter state: %s", body)
 	}
+}
+
+func inputTagHasAttribute(body, name, attr string) bool {
+	nameIndex := strings.Index(body, `name="`+name+`"`)
+	if nameIndex == -1 {
+		return false
+	}
+
+	tagEndOffset := strings.Index(body[nameIndex:], ">")
+	if tagEndOffset == -1 {
+		return false
+	}
+
+	return strings.Contains(body[nameIndex:nameIndex+tagEndOffset], attr)
 }
 
 func assertCardValue(t *testing.T, card DashboardCard, want float64) {

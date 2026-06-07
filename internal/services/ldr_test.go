@@ -100,3 +100,41 @@ func TestLDRServiceGetLDRHistoryReturnsZeroWhenFundingBaseZero(t *testing.T) {
 		t.Fatalf("ConsolidatedLDR = %v, want 0", row.ConsolidatedLDR)
 	}
 }
+
+func TestLDRServiceGetLDRHistoryNormalizesSaldoSigns(t *testing.T) {
+	fake := &fakeSupermanService{
+		rows: []models.SaldoNeraca{
+			{Date: "2026-06-01", NoAkun: "121", SaldoAkhir: -40},
+			{Date: "2026-06-01", NoAkun: "122", SaldoAkhir: -60},
+			{Date: "2026-06-01", NoAkun: "221", SaldoAkhir: -80},
+			{Date: "2026-06-01", NoAkun: "2212111", SaldoAkhir: -20},
+		},
+	}
+	service := NewLDRService(fake)
+
+	rows, err := service.GetLDRHistory(context.Background(), "2026-06-01", "2026-06-01")
+	if err != nil {
+		t.Fatalf("GetLDRHistory returned error: %v", err)
+	}
+
+	if len(rows) != 1 {
+		t.Fatalf("len(rows) = %d, want 1", len(rows))
+	}
+
+	row := rows[0]
+	if row.BakiDebet != 100 {
+		t.Fatalf("BakiDebet = %v, want 100", row.BakiDebet)
+	}
+	if row.Simpanan != 80 {
+		t.Fatalf("Simpanan = %v, want 80", row.Simpanan)
+	}
+	if row.Exclusions != 20 {
+		t.Fatalf("Exclusions = %v, want 20", row.Exclusions)
+	}
+	if row.FundingBase != 60 {
+		t.Fatalf("FundingBase = %v, want 60", row.FundingBase)
+	}
+	if math.Abs(row.ConsolidatedLDR-166.6667) > 0.0001 {
+		t.Fatalf("ConsolidatedLDR = %v, want about 166.6667", row.ConsolidatedLDR)
+	}
+}

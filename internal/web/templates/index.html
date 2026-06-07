@@ -53,11 +53,17 @@
               type="date"
               name="start_date"
               value="{{ .Period.StartDate }}"
+              {{ if not .Period.IsCustom }}disabled{{ end }}
             />
           </label>
           <label>
             <span>End</span>
-            <input type="date" name="end_date" value="{{ .Period.EndDate }}" />
+            <input
+              type="date"
+              name="end_date"
+              value="{{ .Period.EndDate }}"
+              {{ if not .Period.IsCustom }}disabled{{ end }}
+            />
           </label>
           <button type="submit">Apply</button>
         </form>

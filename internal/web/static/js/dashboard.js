@@ -125,6 +125,25 @@
     });
   }
 
+  function syncDateFilterInputs() {
+    var rangeInput = document.querySelector('select[name="range"]');
+    var dateInputs = document.querySelectorAll('input[name="start_date"], input[name="end_date"]');
+    if (!rangeInput || dateInputs.length === 0) {
+      return;
+    }
+
+    function updateDateInputs() {
+      var customRangeSelected = rangeInput.value.toLowerCase() === "custom";
+      Array.prototype.forEach.call(dateInputs, function (input) {
+        input.disabled = !customRangeSelected;
+      });
+    }
+
+    rangeInput.addEventListener("change", updateDateInputs);
+    updateDateInputs();
+  }
+
+  syncDateFilterInputs();
   createLineChart("historical-deposits-chart", "historical-deposits-data", "money");
   createLineChart("historical-ldr-chart", "historical-ldr-data", "percent");
 })();

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -65,13 +66,14 @@ func calculateLDRSummary(saldoNeracas []models.SaldoNeraca) []models.LDRSummaryR
 		}
 
 		account := strings.TrimSpace(saldoNeraca.NoAkun)
+		balance := math.Abs(saldoNeraca.SaldoAkhir)
 		switch {
 		case bakiDebetAccounts[account]:
-			row.BakiDebet += saldoNeraca.SaldoAkhir
+			row.BakiDebet += balance
 		case fundingAccounts[account]:
-			row.Simpanan += saldoNeraca.SaldoAkhir
+			row.Simpanan += balance
 		case exclusionAccounts[account]:
-			row.Exclusions += saldoNeraca.SaldoAkhir
+			row.Exclusions += balance
 		}
 	}
 
