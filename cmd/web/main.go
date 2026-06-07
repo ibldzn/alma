@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/ibldzn/alma/internal/adapters/fincloud"
+	"github.com/ibldzn/alma/internal/adapters/handler"
 	"github.com/ibldzn/alma/internal/repositories"
 	"github.com/ibldzn/alma/internal/services"
 	"github.com/jmoiron/sqlx"
@@ -80,7 +83,35 @@ func main() {
 		}
 	}()
 
+	h := handler.NewHandler(
+		timeDepositService,
+		savingService,
+		ldrService,
+		supermanService,
+	)
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: h.Router(),
+	}
+
+	go func() {
+		fmt.Println("starting server on :8080")
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintf(os.Stderr, "starting HTTP server: %v\n", err)
+			os.Exit(1)
+		}
+	}()
+
 	<-ctx.Done()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		fmt.Fprintf(os.Stderr, "shutting down HTTP server: %v\n", err)
+		os.Exit(1)
+	}
 
 	fmt.Println("shutting down gracefully...")
 }
