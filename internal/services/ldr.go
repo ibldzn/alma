@@ -9,6 +9,7 @@ import (
 	"github.com/ibldzn/alma/internal/constants"
 	"github.com/ibldzn/alma/internal/interfaces"
 	"github.com/ibldzn/alma/internal/models"
+	"github.com/ibldzn/alma/internal/utils"
 )
 
 type LDRService struct {
@@ -42,7 +43,7 @@ func ldrAccounts() []string {
 	accounts = append(accounts, constants.LDRFundingAccounts...)
 	accounts = append(accounts, constants.LDRFundingExclusionAccounts...)
 
-	return normalizeAccounts(accounts)
+	return utils.Dedup(accounts)
 }
 
 func calculateLDRSummary(saldoNeracas []models.SaldoNeraca) []models.LDRSummaryRow {
