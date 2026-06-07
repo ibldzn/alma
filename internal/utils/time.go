@@ -1,10 +1,30 @@
 package utils
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ibldzn/alma/internal/constants"
+	"github.com/ibldzn/alma/internal/types"
 )
+
+func ValidateDateRange(startDate, endDate string) (time.Time, time.Time, error) {
+	start, err := ParseDateInJakarta(startDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: start_date=%q: %v", types.ErrInvalidDateFormat, startDate, err)
+	}
+
+	end, err := ParseDateInJakarta(endDate)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: end_date=%q: %v", types.ErrInvalidDateFormat, endDate, err)
+	}
+
+	if end.Before(start) {
+		return time.Time{}, time.Time{}, types.ErrInvalidDateRange
+	}
+
+	return start, end, nil
+}
 
 func JakartaLocation() *time.Location {
 	return time.FixedZone(constants.AsiaJakarta, 7*60*60)

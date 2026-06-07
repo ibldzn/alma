@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/ibldzn/alma/internal/interfaces"
 	"github.com/ibldzn/alma/internal/models"
@@ -22,11 +21,12 @@ func NewSupermanService(repo interfaces.ISupermanRepository) *SupermanService {
 }
 
 func (s *SupermanService) GetSaldoNeracas(ctx context.Context, startDate, endDate string, accounts []string) ([]models.SaldoNeraca, error) {
-	if err := validateDateRange(startDate, endDate); err != nil {
+	_, _, err := utils.ValidateDateRange(startDate, endDate)
+	if err != nil {
 		return nil, err
 	}
 
-	normalizedAccounts := normalizeAccounts(accounts)
+	normalizedAccounts := utils.Dedup(accounts)
 	if len(normalizedAccounts) == 0 {
 		return nil, fmt.Errorf("%w: accounts cannot be empty", types.ErrInvalidData)
 	}
@@ -37,42 +37,4 @@ func (s *SupermanService) GetSaldoNeracas(ctx context.Context, startDate, endDat
 	}
 
 	return rows, nil
-}
-
-func validateDateRange(startDate, endDate string) error {
-	start, err := utils.ParseDateInJakarta(startDate)
-	if err != nil {
-		return fmt.Errorf("%w: start_date=%q: %v", types.ErrInvalidDateFormat, startDate, err)
-	}
-
-	end, err := utils.ParseDateInJakarta(endDate)
-	if err != nil {
-		return fmt.Errorf("%w: end_date=%q: %v", types.ErrInvalidDateFormat, endDate, err)
-	}
-
-	if end.Before(start) {
-		return types.ErrInvalidDateRange
-	}
-
-	return nil
-}
-
-func normalizeAccounts(accounts []string) []string {
-	seen := make(map[string]struct{}, len(accounts))
-	normalized := make([]string, 0, len(accounts))
-
-	for _, account := range accounts {
-		account = strings.TrimSpace(account)
-		if account == "" {
-			continue
-		}
-		if _, exists := seen[account]; exists {
-			continue
-		}
-
-		seen[account] = struct{}{}
-		normalized = append(normalized, account)
-	}
-
-	return normalized
 }

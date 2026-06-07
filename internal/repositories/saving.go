@@ -122,18 +122,9 @@ func (r *SavingRepository) UpsertSavings(ctx context.Context, savings []models.S
 }
 
 func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endDate string) ([]models.SavingSummaryRow, error) {
-	start, err := utils.ParseDateInJakarta(startDate)
+	start, end, err := utils.ValidateDateRange(startDate, endDate)
 	if err != nil {
 		return nil, err
-	}
-
-	end, err := utils.ParseDateInJakarta(endDate)
-	if err != nil {
-		return nil, err
-	}
-
-	if end.Before(start) {
-		return nil, types.ErrInvalidDateRange
 	}
 
 	today := utils.GetTodayDateInJakarta()
@@ -193,7 +184,7 @@ func (r *SavingRepository) GetSavingSummary(ctx context.Context, startDate, endD
 			ctx,
 			&dwhRows,
 			dwhQuery,
-			startDate,
+			start.Format(constants.DateFormat),
 			dwhEnd.Format(constants.DateFormat),
 			constants.TabInternalProductID,
 		); err != nil {

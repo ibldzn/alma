@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/ibldzn/alma/internal/constants"
 	"github.com/ibldzn/alma/internal/models"
@@ -27,18 +26,9 @@ func NewTimeDepositRepository(appDB, dwhDB *sqlx.DB) *TimeDepositRepository {
 }
 
 func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, startDate, endDate string) ([]models.TimeDeposit, error) {
-	start, err := time.Parse(constants.DateFormat, startDate)
+	start, end, err := utils.ValidateDateRange(startDate, endDate)
 	if err != nil {
 		return nil, err
-	}
-
-	end, err := time.Parse(constants.DateFormat, endDate)
-	if err != nil {
-		return nil, err
-	}
-
-	if end.Before(start) {
-		return nil, types.ErrInvalidDateRange
 	}
 
 	today := utils.GetTodayInJakarta()
@@ -68,7 +58,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 			ctx,
 			&timeDeposits,
 			dwhQuery,
-			startDate,
+			start.Format(constants.DateFormat),
 			dwhEnd.Format(constants.DateFormat),
 		); err != nil {
 			return nil, err
@@ -102,7 +92,7 @@ func (r *TimeDepositRepository) GetTimeDepositHistory(ctx context.Context, start
 			ctx,
 			&tdToday,
 			appQuery,
-			today.Format(constants.DateFormat),
+			end.Format(constants.DateFormat),
 		); err != nil {
 			return nil, err
 		}
