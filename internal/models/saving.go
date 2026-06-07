@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ibldzn/alma/internal/constants"
 	"github.com/ibldzn/alma/internal/utils"
 )
 
@@ -103,6 +104,7 @@ func (dwh *DwhSaving) ToSaving() (Saving, error) {
 	}
 
 	return Saving{
+		Date:                  dwh.AsOfDate.Format(constants.DateFormat),
 		BranchCode:            strings.TrimSpace(optionalString(dwh.BranchCode)),
 		ProductID:             strings.TrimSpace(optionalString(dwh.ProductID)),
 		ProductName:           strings.TrimSpace(optionalString(dwh.ProductID)), // DWH tidak punya field product_name, jadi pakai product_id saja
