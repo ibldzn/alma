@@ -26,12 +26,30 @@
 
     <section class="sub-nav" aria-label="Dashboard filters">
       <div class="sub-nav-inner">
-        <div>
-          <p class="eyebrow">Dashboard</p>
-          <h1>Funding &amp; Liquidity</h1>
+        <div class="sub-nav-header">
+          <div>
+            <p class="eyebrow">Dashboard</p>
+            <h1>Funding &amp; Liquidity</h1>
+          </div>
+          <button
+            class="filter-menu-toggle"
+            type="button"
+            aria-controls="dashboard-filters"
+            aria-expanded="false"
+            aria-label="Toggle dashboard filters"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
 
-        <form class="filter-form" method="get" action="/">
+        <form
+          class="filter-form"
+          id="dashboard-filters"
+          method="get"
+          action="/"
+        >
           <label>
             <span>Range</span>
             <select name="range">

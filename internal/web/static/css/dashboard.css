@@ -1,12 +1,10 @@
 :root {
   --primary: #0066cc;
   --primary-focus: #0071e3;
-  --primary-on-dark: #2997ff;
   --ink: #1d1d1f;
   --ink-muted: #7a7a7a;
   --canvas: #ffffff;
   --parchment: #f5f5f7;
-  --pearl: #fafafc;
   --dark: #272729;
   --black: #000000;
   --hairline: #e0e0e0;
@@ -18,6 +16,7 @@
 }
 
 html {
+  overflow-x: hidden;
   color: var(--ink);
   font-family:
     "SF Pro Text",
@@ -30,11 +29,13 @@ html {
 }
 
 body {
+  min-width: 0;
   margin: 0;
   background: var(--parchment);
   color: var(--ink);
   font-size: 17px;
   line-height: 1.47;
+  overflow-x: hidden;
 }
 
 a {
@@ -117,6 +118,7 @@ a {
 
 .sub-nav-inner {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
@@ -124,6 +126,48 @@ a {
   min-height: 76px;
   margin: 0 auto;
   padding: 12px 0;
+}
+
+.sub-nav-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sub-nav-header > div {
+  min-width: 0;
+}
+
+.filter-menu-toggle {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--canvas);
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+
+.filter-menu-toggle span {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+.filter-menu-toggle:focus-visible {
+  outline: 2px solid var(--primary-focus);
+  outline-offset: 2px;
+}
+
+.filter-menu-toggle:active {
+  transform: scale(0.95);
 }
 
 .eyebrow {
@@ -157,6 +201,7 @@ h1 {
 
 .filter-form {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: end;
   justify-content: flex-end;
@@ -165,6 +210,7 @@ h1 {
 
 .filter-form label {
   display: grid;
+  min-width: 0;
   gap: 4px;
   color: var(--ink-muted);
   font-size: 12px;
@@ -175,6 +221,8 @@ h1 {
 .filter-form input {
   height: 44px;
   min-width: 142px;
+  max-width: 100%;
+  display: block;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 9999px;
   background: var(--canvas);
@@ -197,6 +245,8 @@ h1 {
   cursor: pointer;
   font: inherit;
   font-size: 17px;
+  max-width: 100%;
+  display: block;
   padding: 0 22px;
 }
 
@@ -317,7 +367,8 @@ h1 {
 }
 
 main {
-  overflow: hidden;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .alert-band {
@@ -491,9 +542,24 @@ main {
     flex-direction: column;
   }
 
-  .filter-form {
-    justify-content: flex-start;
+  .sub-nav-header {
     width: 100%;
+  }
+
+  .filter-form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: end;
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .filter-form label,
+  .filter-form select,
+  .filter-form input,
+  .filter-form button {
+    width: 100%;
+    min-width: 0;
   }
 
   .card-grid {
@@ -502,27 +568,132 @@ main {
 }
 
 @media (max-width: 640px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .global-nav,
+  .sub-nav,
+  main {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+
+  .nav-inner,
+  .sub-nav-inner {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+    padding-inline: 16px;
+  }
+
+  .section-heading,
+  .card-grid,
+  .chart-panel {
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+  }
+
   .nav-meta {
     display: none;
   }
 
   .nav-actions {
+    min-width: 0;
     gap: 8px;
   }
 
   .nav-user {
-    max-width: 120px;
+    max-width: min(120px, 32vw);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .filter-form,
-  .filter-form label,
+  .nav-logout {
+    padding-inline: 10px;
+  }
+
+  .sub-nav-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    min-height: 68px;
+    padding-block: 10px;
+  }
+
+  .sub-nav-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .sub-nav-header h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .filter-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    flex-direction: column;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .filter-form {
+    display: none;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    padding-top: 14px;
+  }
+
+  .sub-nav.is-open .filter-form {
+    display: grid;
+  }
+
+  .filter-form label {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 8px;
+    font-size: 13px;
+  }
+
   .filter-form select,
   .filter-form input,
   .filter-form button {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-inline-size: 0;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .filter-form select,
+  .filter-form input {
+    padding-inline: 16px;
+  }
+
+  .filter-form input[type="date"] {
+    appearance: none;
+    -webkit-appearance: none;
+    text-align: start;
+  }
+
+  .filter-form button {
+    margin-top: 2px;
   }
 
   .hero-section,
@@ -531,8 +702,17 @@ main {
     padding: 48px 0;
   }
 
+  .hero-section {
+    padding-inline: 16px;
+  }
+
   .card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .metric-card {
+    min-height: 152px;
+    padding: 20px;
   }
 
   .chart-panel {

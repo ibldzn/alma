@@ -30,28 +30,45 @@
     }
 
     if (unit) {
-      return sign + "Rp " + new Intl.NumberFormat("id-ID", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(abs / divisor) + unit;
+      return (
+        sign +
+        "Rp " +
+        new Intl.NumberFormat("id-ID", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(abs / divisor) +
+        unit
+      );
     }
 
-    return sign + "Rp " + new Intl.NumberFormat("id-ID", {
-      maximumFractionDigits: 0
-    }).format(abs);
+    return (
+      sign +
+      "Rp " +
+      new Intl.NumberFormat("id-ID", {
+        maximumFractionDigits: 0,
+      }).format(abs)
+    );
   }
 
   function formatPercent(value) {
-    return new Intl.NumberFormat("id-ID", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value) + "%";
+    return (
+      new Intl.NumberFormat("id-ID", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value) + "%"
+    );
   }
 
   function createLineChart(canvasId, dataId, valueType) {
     var canvas = document.getElementById(canvasId);
     var data = readChartData(dataId);
-    if (!canvas || !data || !data.labels || data.labels.length === 0 || !window.Chart) {
+    if (
+      !canvas ||
+      !data ||
+      !data.labels ||
+      data.labels.length === 0 ||
+      !window.Chart
+    ) {
       return;
     }
 
@@ -64,7 +81,7 @@
         borderWidth: 2,
         pointRadius: 2,
         pointHoverRadius: 4,
-        tension: 0.32
+        tension: 0.32,
       });
     });
 
@@ -76,7 +93,7 @@
         maintainAspectRatio: false,
         interaction: {
           intersect: false,
-          mode: "index"
+          mode: "index",
         },
         plugins: {
           legend: {
@@ -84,50 +101,61 @@
               color: "#1d1d1f",
               usePointStyle: true,
               boxWidth: 8,
-              boxHeight: 8
-            }
+              boxHeight: 8,
+            },
           },
           tooltip: {
             callbacks: {
               label: function (context) {
-                var label = context.dataset.label ? context.dataset.label + ": " : "";
+                var label = context.dataset.label
+                  ? context.dataset.label + ": "
+                  : "";
                 var value = context.parsed.y;
-                return label + (valueType === "percent" ? formatPercent(value) : formatCompactRupiah(value));
-              }
-            }
-          }
+                return (
+                  label +
+                  (valueType === "percent"
+                    ? formatPercent(value)
+                    : formatCompactRupiah(value))
+                );
+              },
+            },
+          },
         },
         scales: {
           x: {
             grid: {
-              color: "rgba(0, 0, 0, 0.06)"
+              color: "rgba(0, 0, 0, 0.06)",
             },
             ticks: {
               color: "#7a7a7a",
               maxRotation: 0,
-              autoSkip: true
-            }
+              autoSkip: true,
+            },
           },
           y: {
             beginAtZero: false,
             grid: {
-              color: "rgba(0, 0, 0, 0.06)"
+              color: "rgba(0, 0, 0, 0.06)",
             },
             ticks: {
               color: "#7a7a7a",
               callback: function (value) {
-                return valueType === "percent" ? formatPercent(value) : formatCompactRupiah(value);
-              }
-            }
-          }
-        }
-      }
+                return valueType === "percent"
+                  ? formatPercent(value)
+                  : formatCompactRupiah(value);
+              },
+            },
+          },
+        },
+      },
     });
   }
 
   function syncDateFilterInputs() {
     var rangeInput = document.querySelector('select[name="range"]');
-    var dateInputs = document.querySelectorAll('input[name="start_date"], input[name="end_date"]');
+    var dateInputs = document.querySelectorAll(
+      'input[name="start_date"], input[name="end_date"]',
+    );
     if (!rangeInput || dateInputs.length === 0) {
       return;
     }
@@ -143,7 +171,62 @@
     updateDateInputs();
   }
 
+  function syncFilterMenu() {
+    var subNav = document.querySelector(".sub-nav");
+    var toggle = document.querySelector(".filter-menu-toggle");
+    if (!subNav || !toggle) {
+      return;
+    }
+
+    var targetId = toggle.getAttribute("aria-controls");
+    var filters = targetId ? document.getElementById(targetId) : null;
+    if (!filters) {
+      return;
+    }
+
+    var mobileQuery = window.matchMedia("(max-width: 640px)");
+
+    function setOpen(open) {
+      var shouldOpen = Boolean(open && mobileQuery.matches);
+      subNav.classList.toggle("is-open", shouldOpen);
+      toggle.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    }
+
+    toggle.addEventListener("click", function () {
+      setOpen(toggle.getAttribute("aria-expanded") !== "true");
+    });
+
+    filters.addEventListener("submit", function () {
+      setOpen(false);
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (
+        event.key === "Escape" &&
+        toggle.getAttribute("aria-expanded") === "true"
+      ) {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+
+    if (typeof mobileQuery.addEventListener === "function") {
+      mobileQuery.addEventListener("change", function () {
+        setOpen(false);
+      });
+    } else if (typeof mobileQuery.addListener === "function") {
+      mobileQuery.addListener(function () {
+        setOpen(false);
+      });
+    }
+  }
+
+  syncFilterMenu();
   syncDateFilterInputs();
-  createLineChart("historical-deposits-chart", "historical-deposits-data", "money");
+  createLineChart(
+    "historical-deposits-chart",
+    "historical-deposits-data",
+    "money",
+  );
   createLineChart("historical-ldr-chart", "historical-ldr-data", "percent");
 })();

@@ -267,6 +267,9 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 		"Rp 400,00 M",
 		"historical-deposits-data",
 		"/assets/js/chart.umd.min.js",
+		"filter-menu-toggle",
+		`aria-controls="dashboard-filters"`,
+		`id="dashboard-filters"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing %q", want)
