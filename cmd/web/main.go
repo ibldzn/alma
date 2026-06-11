@@ -63,7 +63,7 @@ func main() {
 	savingRepository := repositories.NewSavingRepository(db.AppDb, db.Dwh)
 	savingService := services.NewSavingService(savingRepository, supermanService)
 
-	ldrService := services.NewLDRService(supermanService)
+	tksService := services.NewTKSService(supermanService)
 
 	fincloudService := services.NewFincloudService(
 		fincloud.Config{},
@@ -85,7 +85,7 @@ func main() {
 	h := handler.NewHandler(
 		timeDepositService,
 		savingService,
-		ldrService,
+		tksService,
 		supermanService,
 	)
 

@@ -6,6 +6,7 @@ import (
 	"github.com/ibldzn/alma/internal/models"
 )
 
-type ILDRService interface {
+type ITKSService interface {
 	GetLDRHistory(ctx context.Context, startDate, endDate string) ([]models.LDRSummaryRow, error)
+	GetCashRatioHistory(ctx context.Context, startDate, endDate string) ([]models.CashRatioSummaryRow, error)
 }

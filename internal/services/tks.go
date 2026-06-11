@@ -13,23 +13,32 @@ import (
 	"github.com/ibldzn/alma/internal/utils"
 )
 
-type LDRService struct {
+type TKSService struct {
 	SupermanService interfaces.ISupermanService
 }
 
-func NewLDRService(supermanService interfaces.ISupermanService) *LDRService {
-	return &LDRService{
+func NewTKSService(supermanService interfaces.ISupermanService) *TKSService {
+	return &TKSService{
 		SupermanService: supermanService,
 	}
 }
 
-func (s *LDRService) GetLDRHistory(ctx context.Context, startDate, endDate string) ([]models.LDRSummaryRow, error) {
+func (s *TKSService) GetLDRHistory(ctx context.Context, startDate, endDate string) ([]models.LDRSummaryRow, error) {
 	saldoNeracas, err := s.SupermanService.GetSaldoNeracas(ctx, startDate, endDate, ldrAccounts())
 	if err != nil {
 		return nil, fmt.Errorf("get LDR saldo neracas: %w", err)
 	}
 
 	return calculateLDRSummary(saldoNeracas), nil
+}
+
+func (s *TKSService) GetCashRatioHistory(ctx context.Context, startDate, endDate string) ([]models.CashRatioSummaryRow, error) {
+	saldoNeracas, err := s.SupermanService.GetSaldoNeracas(ctx, startDate, endDate, cashRatioAccounts())
+	if err != nil {
+		return nil, fmt.Errorf("get cash ratio saldo neracas: %w", err)
+	}
+
+	return calculateCashRatioSummary(saldoNeracas), nil
 }
 
 func ldrAccounts() []string {
@@ -43,6 +52,19 @@ func ldrAccounts() []string {
 	accounts = append(accounts, constants.LDRBakiDebetAccounts...)
 	accounts = append(accounts, constants.LDRFundingAccounts...)
 	accounts = append(accounts, constants.LDRFundingExclusionAccounts...)
+
+	return utils.Dedup(accounts)
+}
+
+func cashRatioAccounts() []string {
+	accounts := make(
+		[]string,
+		0,
+		len(constants.CashRatioAssetLiquidAccounts)+
+			len(constants.CashRatioLiabilityShortTermAccounts),
+	)
+	accounts = append(accounts, constants.CashRatioAssetLiquidAccounts...)
+	accounts = append(accounts, constants.CashRatioLiabilityShortTermAccounts...)
 
 	return utils.Dedup(accounts)
 }
@@ -83,6 +105,50 @@ func calculateLDRSummary(saldoNeracas []models.SaldoNeraca) []models.LDRSummaryR
 		summary.FundingBase = summary.Simpanan - summary.Exclusions
 		if summary.FundingBase != 0 {
 			summary.ConsolidatedLDR = summary.BakiDebet / summary.FundingBase * 100
+		}
+
+		rows = append(rows, summary)
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].Date < rows[j].Date
+	})
+
+	return rows
+}
+
+func calculateCashRatioSummary(saldoNeracas []models.SaldoNeraca) []models.CashRatioSummaryRow {
+	assetLiquidAccounts := toAccountSet(constants.CashRatioAssetLiquidAccounts)
+	liabilityShortTermAccounts := toAccountSet(constants.CashRatioLiabilityShortTermAccounts)
+
+	rowsByDate := make(map[string]*models.CashRatioSummaryRow)
+	for _, saldoNeraca := range saldoNeracas {
+		date := strings.TrimSpace(saldoNeraca.Date)
+		if date == "" {
+			continue
+		}
+
+		row, exists := rowsByDate[date]
+		if !exists {
+			row = &models.CashRatioSummaryRow{Date: date}
+			rowsByDate[date] = row
+		}
+
+		account := strings.TrimSpace(saldoNeraca.NoAkun)
+		balance := math.Abs(saldoNeraca.SaldoAkhir)
+		switch {
+		case assetLiquidAccounts[account]:
+			row.AssetLiquid += balance
+		case liabilityShortTermAccounts[account]:
+			row.LiabilityShortTerm += balance
+		}
+	}
+
+	rows := make([]models.CashRatioSummaryRow, 0, len(rowsByDate))
+	for _, row := range rowsByDate {
+		summary := *row
+		if summary.LiabilityShortTerm != 0 {
+			summary.CashRatio = summary.AssetLiquid / summary.LiabilityShortTerm * 100
 		}
 
 		rows = append(rows, summary)

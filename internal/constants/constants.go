@@ -36,4 +36,22 @@ var (
 	LDRBakiDebetAccounts        = []string{"121", "122"}
 	LDRFundingAccounts          = []string{"221", "2312200", "2312201"}
 	LDRFundingExclusionAccounts = []string{"2212111", "2212116", "2212199"}
+
+	CashRatioLiabilityShortTermAccounts = []string{
+		"211",
+		"212",
+		"213",
+		"219",
+		"2011008",
+		"2011001",
+		"2011004",
+		"2011005",
+		"2011006",
+		"2011007",
+		"208",
+		"221",
+		"2312200",
+		"2312201",
+	}
+	CashRatioAssetLiquidAccounts = []string{"100", "111", "112"}
 )

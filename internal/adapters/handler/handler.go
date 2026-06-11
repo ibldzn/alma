@@ -15,7 +15,7 @@ import (
 type Handler struct {
 	TimeDepositService interfaces.ITimeDepositService
 	SavingService      interfaces.ISavingService
-	LDRService         interfaces.ILDRService
+	TKSService         interfaces.ITKSService
 	SupermanService    interfaces.ISupermanService
 	templates          *template.Template
 	assetsHandler      http.Handler
@@ -24,7 +24,7 @@ type Handler struct {
 func NewHandler(
 	timeDepositService interfaces.ITimeDepositService,
 	savingService interfaces.ISavingService,
-	ldrService interfaces.ILDRService,
+	tksService interfaces.ITKSService,
 	supermanService interfaces.ISupermanService,
 ) *Handler {
 	templates := template.Must(template.ParseFS(web.Files, "templates/*.html"))
@@ -37,7 +37,7 @@ func NewHandler(
 	return &Handler{
 		TimeDepositService: timeDepositService,
 		SavingService:      savingService,
-		LDRService:         ldrService,
+		TKSService:         tksService,
 		SupermanService:    supermanService,
 		templates:          templates,
 		assetsHandler:      http.StripPrefix("/assets/", http.FileServer(http.FS(staticFS))),
@@ -82,7 +82,7 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ldr, err := h.LDRService.GetLDRHistory(r.Context(), period.StartDate, period.EndDate)
+	ldr, err := h.TKSService.GetLDRHistory(r.Context(), period.StartDate, period.EndDate)
 	if err != nil {
 		h.renderDashboardLoadError(w, period, currentUser, "Unable to load LDR data: "+err.Error())
 		return
