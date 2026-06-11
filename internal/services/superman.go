@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ibldzn/alma/internal/interfaces"
 	"github.com/ibldzn/alma/internal/models"
@@ -26,7 +27,7 @@ func (s *SupermanService) GetSaldoNeracas(ctx context.Context, startDate, endDat
 		return nil, err
 	}
 
-	normalizedAccounts := utils.Dedup(accounts)
+	normalizedAccounts := normalizeSaldoNeracaAccounts(accounts)
 	if len(normalizedAccounts) == 0 {
 		return nil, fmt.Errorf("%w: accounts cannot be empty", types.ErrInvalidData)
 	}
@@ -37,4 +38,24 @@ func (s *SupermanService) GetSaldoNeracas(ctx context.Context, startDate, endDat
 	}
 
 	return rows, nil
+}
+
+func normalizeSaldoNeracaAccounts(accounts []string) []string {
+	seen := make(map[string]struct{}, len(accounts))
+	normalized := make([]string, 0, len(accounts))
+
+	for _, account := range accounts {
+		account = strings.TrimSpace(account)
+		if account == "" {
+			continue
+		}
+		if _, exists := seen[account]; exists {
+			continue
+		}
+
+		seen[account] = struct{}{}
+		normalized = append(normalized, account)
+	}
+
+	return normalized
 }

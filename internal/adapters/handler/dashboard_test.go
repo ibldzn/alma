@@ -232,7 +232,7 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 			{Date: "2026-06-02", ProductID: "101", Balance: 60_000_000_000},
 		},
 	}
-	ldrService := &fakeLDRService{
+	tksService := &fakeTKSService{
 		rows: []models.LDRSummaryRow{
 			{Date: "2026-06-01", ConsolidatedLDR: 160},
 			{Date: "2026-06-02", ConsolidatedLDR: 163.92},
@@ -244,7 +244,7 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 			{Date: "2026-06-02", NoAkun: "260", SaldoAkhir: -15_000_000_000},
 		},
 	}
-	handler := newTestHandler(t, timeDepositService, savingService, ldrService, supermanService)
+	handler := newTestHandler(t, timeDepositService, savingService, tksService, supermanService)
 
 	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=2026-06-01&end_date=2026-06-02", nil)
 	rec := httptest.NewRecorder()
@@ -445,7 +445,7 @@ func newTestHandler(
 	t *testing.T,
 	timeDepositService *fakeTimeDepositService,
 	savingService *fakeSavingService,
-	ldrService *fakeLDRService,
+	tksService *fakeTKSService,
 	supermanService *fakeSupermanService,
 ) *Handler {
 	t.Helper()
@@ -456,8 +456,8 @@ func newTestHandler(
 	if savingService == nil {
 		savingService = &fakeSavingService{}
 	}
-	if ldrService == nil {
-		ldrService = &fakeLDRService{}
+	if tksService == nil {
+		tksService = &fakeTKSService{}
 	}
 	if supermanService == nil {
 		supermanService = &fakeSupermanService{}
@@ -465,7 +465,7 @@ func newTestHandler(
 	return NewHandler(
 		timeDepositService,
 		savingService,
-		ldrService,
+		tksService,
 		supermanService,
 	)
 }
@@ -510,13 +510,18 @@ func (f *fakeSavingService) GetSavingSummary(ctx context.Context, startDate, end
 	return f.summaryRows, f.err
 }
 
-type fakeLDRService struct {
-	rows []models.LDRSummaryRow
-	err  error
+type fakeTKSService struct {
+	rows          []models.LDRSummaryRow
+	cashRatioRows []models.CashRatioSummaryRow
+	err           error
 }
 
-func (f *fakeLDRService) GetLDRHistory(ctx context.Context, startDate, endDate string) ([]models.LDRSummaryRow, error) {
+func (f *fakeTKSService) GetLDRHistory(ctx context.Context, startDate, endDate string) ([]models.LDRSummaryRow, error) {
 	return f.rows, f.err
+}
+
+func (f *fakeTKSService) GetCashRatioHistory(ctx context.Context, startDate, endDate string) ([]models.CashRatioSummaryRow, error) {
+	return f.cashRatioRows, f.err
 }
 
 type fakeSupermanService struct {
