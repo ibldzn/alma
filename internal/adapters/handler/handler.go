@@ -17,8 +17,6 @@ type Handler struct {
 	SavingService      interfaces.ISavingService
 	LDRService         interfaces.ILDRService
 	SupermanService    interfaces.ISupermanService
-	AuthService        interfaces.IAuthService
-	SessionManager     *SessionManager
 	templates          *template.Template
 	assetsHandler      http.Handler
 }
@@ -28,8 +26,6 @@ func NewHandler(
 	savingService interfaces.ISavingService,
 	ldrService interfaces.ILDRService,
 	supermanService interfaces.ISupermanService,
-	authService interfaces.IAuthService,
-	sessionManager *SessionManager,
 ) *Handler {
 	templates := template.Must(template.ParseFS(web.Files, "templates/*.html"))
 
@@ -43,8 +39,6 @@ func NewHandler(
 		SavingService:      savingService,
 		LDRService:         ldrService,
 		SupermanService:    supermanService,
-		AuthService:        authService,
-		SessionManager:     sessionManager,
 		templates:          templates,
 		assetsHandler:      http.StripPrefix("/assets/", http.FileServer(http.FS(staticFS))),
 	}
@@ -57,16 +51,13 @@ func (h *Handler) Router() http.Handler {
 	r.Get("/login", h.LoginForm)
 	r.Post("/login", h.LoginSubmit)
 	r.Post("/logout", h.Logout)
-	r.Group(func(r chi.Router) {
-		r.Use(h.RequireAuth)
-		r.Get("/", h.Index)
-	})
+	r.Get("/", h.Index)
 
 	return r
 }
 
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
-	currentUser, _ := sessionUserFromContext(r.Context())
+	var currentUser SessionUser
 	period, err := resolveDashboardPeriod(r.URL.Query(), utils.GetTodayDateInJakarta())
 	if err != nil {
 		h.renderIndex(w, http.StatusBadRequest, IndexPageData{

@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -67,11 +65,6 @@ func main() {
 
 	ldrService := services.NewLDRService(supermanService)
 
-	authRepository := repositories.NewAuthRepository(db.AppDb)
-	authService := services.NewAuthService(authRepository)
-	sessionManager, err := initSessionManager()
-	ensureOk("initializing session manager", err)
-
 	fincloudService := services.NewFincloudService(
 		fincloud.Config{},
 		fincloud.Credentials{
@@ -94,8 +87,6 @@ func main() {
 		savingService,
 		ldrService,
 		supermanService,
-		authService,
-		sessionManager,
 	)
 
 	srv := &http.Server{
@@ -122,40 +113,6 @@ func main() {
 	}
 
 	fmt.Println("shutting down gracefully...")
-}
-
-func initSessionManager() (*handler.SessionManager, error) {
-	secret := strings.TrimSpace(os.Getenv("ALMA_SESSION_SECRET"))
-	if secret == "" {
-		return nil, errors.New("ALMA_SESSION_SECRET is required")
-	}
-
-	ttl := 12 * time.Hour
-	if value := strings.TrimSpace(os.Getenv("ALMA_SESSION_TTL")); value != "" {
-		parsedTTL, err := time.ParseDuration(value)
-		if err != nil {
-			return nil, fmt.Errorf("parsing ALMA_SESSION_TTL: %w", err)
-		}
-		if parsedTTL <= 0 {
-			return nil, errors.New("ALMA_SESSION_TTL must be positive")
-		}
-		ttl = parsedTTL
-	}
-
-	secure := false
-	if value := strings.TrimSpace(os.Getenv("ALMA_COOKIE_SECURE")); value != "" {
-		parsedSecure, err := strconv.ParseBool(value)
-		if err != nil {
-			return nil, fmt.Errorf("parsing ALMA_COOKIE_SECURE: %w", err)
-		}
-		secure = parsedSecure
-	}
-
-	return handler.NewSessionManager(handler.SessionConfig{
-		Secret: []byte(secret),
-		TTL:    ttl,
-		Secure: secure,
-	})
 }
 
 func ensureOk(msg string, err error) {

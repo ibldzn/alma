@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ibldzn/alma/internal/models"
-	"github.com/ibldzn/alma/internal/types"
 	"github.com/ibldzn/alma/internal/utils"
 )
 
@@ -245,10 +244,9 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 			{Date: "2026-06-02", NoAkun: "260", SaldoAkhir: -15_000_000_000},
 		},
 	}
-	handler, sessions := newTestHandler(t, timeDepositService, savingService, ldrService, supermanService, nil)
+	handler := newTestHandler(t, timeDepositService, savingService, ldrService, supermanService)
 
 	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=2026-06-01&end_date=2026-06-02", nil)
-	addAuthCookie(t, req, sessions)
 	rec := httptest.NewRecorder()
 
 	handler.Router().ServeHTTP(rec, req)
@@ -297,9 +295,8 @@ func TestIndexDateInputsDisabledOutsideCustomRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler, sessions := newTestHandler(t, nil, nil, nil, nil, nil)
+			handler := newTestHandler(t, nil, nil, nil, nil)
 			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
-			addAuthCookie(t, req, sessions)
 			rec := httptest.NewRecorder()
 
 			handler.Router().ServeHTTP(rec, req)
@@ -320,10 +317,9 @@ func TestIndexDateInputsDisabledOutsideCustomRange(t *testing.T) {
 
 func TestIndexInvalidQueryRendersHTMLWithoutServiceCalls(t *testing.T) {
 	timeDepositService := &fakeTimeDepositService{}
-	handler, sessions := newTestHandler(t, timeDepositService, nil, nil, nil, nil)
+	handler := newTestHandler(t, timeDepositService, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=bad&end_date=2026-06-02", nil)
-	addAuthCookie(t, req, sessions)
 	rec := httptest.NewRecorder()
 
 	handler.Router().ServeHTTP(rec, req)
@@ -339,27 +335,24 @@ func TestIndexInvalidQueryRendersHTMLWithoutServiceCalls(t *testing.T) {
 	}
 }
 
-func TestDashboardRequiresAuthentication(t *testing.T) {
+func TestDashboardAllowsAnonymousAccess(t *testing.T) {
 	timeDepositService := &fakeTimeDepositService{}
-	handler, _ := newTestHandler(t, timeDepositService, nil, nil, nil, nil)
+	handler := newTestHandler(t, timeDepositService, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	handler.Router().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusFound {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
-	if location := rec.Header().Get("Location"); location != "/login?next=%2F" {
-		t.Fatalf("Location = %q, want /login?next=%%2F", location)
-	}
-	if timeDepositService.called {
-		t.Fatal("time deposit service was called before auth")
+	if !timeDepositService.called {
+		t.Fatal("time deposit service was not called")
 	}
 }
 
 func TestAssetsStayPublic(t *testing.T) {
-	handler, _ := newTestHandler(t, nil, nil, nil, nil, nil)
+	handler := newTestHandler(t, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/assets/css/dashboard.css", nil)
 	rec := httptest.NewRecorder()
 
@@ -373,50 +366,24 @@ func TestAssetsStayPublic(t *testing.T) {
 	}
 }
 
-func TestLoginFormRenders(t *testing.T) {
-	handler, _ := newTestHandler(t, nil, nil, nil, nil, nil)
+func TestLoginFormRedirectsToDashboard(t *testing.T) {
+	handler := newTestHandler(t, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/login?next=%2F", nil)
 	rec := httptest.NewRecorder()
 
 	handler.Router().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
-	body := rec.Body.String()
-	for _, want := range []string{"ALMA.", `name="username"`, `name="password"`, `name="next" value="/"`} {
-		if !strings.Contains(body, want) {
-			t.Fatalf("login body missing %q", want)
-		}
+	if location := rec.Header().Get("Location"); location != "/" {
+		t.Fatalf("Location = %q, want /", location)
 	}
 }
 
-func TestLoginRejectsInvalidCredentials(t *testing.T) {
-	authService := &fakeAuthService{err: types.ErrInvalidCredentials}
-	handler, _ := newTestHandler(t, nil, nil, nil, nil, authService)
-	form := strings.NewReader("username=wrong&password=bad&next=%2F")
-	req := httptest.NewRequest(http.MethodPost, "/login", form)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec := httptest.NewRecorder()
-
-	handler.Router().ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
-	}
-	if authService.username != "wrong" || authService.password != "bad" {
-		t.Fatalf("auth credentials = %q/%q", authService.username, authService.password)
-	}
-	if body := rec.Body.String(); !strings.Contains(body, invalidLoginMessage) {
-		t.Fatalf("login body missing invalid login message: %s", body)
-	}
-}
-
-func TestLoginSetsSessionCookie(t *testing.T) {
-	authService := &fakeAuthService{user: testUser()}
-	handler, _ := newTestHandler(t, nil, nil, nil, nil, authService)
-	form := strings.NewReader("username=haysan&password=secret&next=%2F")
-	req := httptest.NewRequest(http.MethodPost, "/login", form)
+func TestLoginSubmitRedirectsToDashboardWithoutCookie(t *testing.T) {
+	handler := newTestHandler(t, nil, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=wrong&password=bad&next=%2F"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 
@@ -428,14 +395,13 @@ func TestLoginSetsSessionCookie(t *testing.T) {
 	if location := rec.Header().Get("Location"); location != "/" {
 		t.Fatalf("Location = %q, want /", location)
 	}
-	cookies := rec.Result().Cookies()
-	if len(cookies) != 1 || cookies[0].Name != sessionCookieName || cookies[0].Value == "" {
-		t.Fatalf("session cookie = %+v", cookies)
+	if cookies := rec.Result().Cookies(); len(cookies) != 0 {
+		t.Fatalf("cookies = %+v, want none", cookies)
 	}
 }
 
 func TestLogoutClearsSessionCookie(t *testing.T) {
-	handler, _ := newTestHandler(t, nil, nil, nil, nil, nil)
+	handler := newTestHandler(t, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	rec := httptest.NewRecorder()
 
@@ -444,8 +410,8 @@ func TestLogoutClearsSessionCookie(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
-	if location := rec.Header().Get("Location"); location != "/login" {
-		t.Fatalf("Location = %q, want /login", location)
+	if location := rec.Header().Get("Location"); location != "/" {
+		t.Fatalf("Location = %q, want /", location)
 	}
 	cookies := rec.Result().Cookies()
 	if len(cookies) != 1 || cookies[0].Name != sessionCookieName || cookies[0].MaxAge >= 0 {
@@ -481,8 +447,7 @@ func newTestHandler(
 	savingService *fakeSavingService,
 	ldrService *fakeLDRService,
 	supermanService *fakeSupermanService,
-	authService *fakeAuthService,
-) (*Handler, *SessionManager) {
+) *Handler {
 	t.Helper()
 
 	if timeDepositService == nil {
@@ -497,44 +462,12 @@ func newTestHandler(
 	if supermanService == nil {
 		supermanService = &fakeSupermanService{}
 	}
-	if authService == nil {
-		authService = &fakeAuthService{user: testUser()}
-	}
-
-	sessions, err := NewSessionManager(SessionConfig{
-		Secret: []byte("test-session-secret"),
-		TTL:    time.Hour,
-	})
-	if err != nil {
-		t.Fatalf("NewSessionManager returned error: %v", err)
-	}
-
 	return NewHandler(
 		timeDepositService,
 		savingService,
 		ldrService,
 		supermanService,
-		authService,
-		sessions,
-	), sessions
-}
-
-func addAuthCookie(t *testing.T, req *http.Request, sessions *SessionManager) {
-	t.Helper()
-
-	cookie, err := sessions.NewCookie(testUser())
-	if err != nil {
-		t.Fatalf("NewCookie returned error: %v", err)
-	}
-	req.AddCookie(cookie)
-}
-
-func testUser() models.User {
-	return models.User{
-		ID:       1,
-		Name:     "Haytsam",
-		Username: "haytsam",
-	}
+	)
 }
 
 type fakeTimeDepositService struct {
@@ -595,23 +528,4 @@ type fakeSupermanService struct {
 func (f *fakeSupermanService) GetSaldoNeracas(ctx context.Context, startDate, endDate string, accounts []string) ([]models.SaldoNeraca, error) {
 	f.accounts = append([]string(nil), accounts...)
 	return f.rows, f.err
-}
-
-type fakeAuthService struct {
-	user     models.User
-	err      error
-	username string
-	password string
-}
-
-func (f *fakeAuthService) Authenticate(ctx context.Context, username, password string) (models.User, error) {
-	f.username = username
-	f.password = password
-	if f.err != nil {
-		return models.User{}, f.err
-	}
-	if f.user.ID == 0 {
-		f.user = testUser()
-	}
-	return f.user, nil
 }
