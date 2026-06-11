@@ -23,6 +23,7 @@ type Database struct {
 	AppDb    *sqlx.DB
 	Dwh      *sqlx.DB
 	Superman *sqlx.DB
+	Edapem   *sqlx.DB
 }
 
 func (db *Database) Close() {
@@ -38,6 +39,7 @@ func (db *Database) Close() {
 	closeIfOk("application", db.AppDb)
 	closeIfOk("DWH", db.Dwh)
 	closeIfOk("Superman", db.Superman)
+	closeIfOk("Edapem", db.Edapem)
 }
 
 func main() {
@@ -63,6 +65,9 @@ func main() {
 	savingRepository := repositories.NewSavingRepository(db.AppDb, db.Dwh)
 	savingService := services.NewSavingService(savingRepository, supermanService)
 
+	edapemRepository := repositories.NewEdapemRepository(db.Edapem)
+	edapemService := services.NewEdapemService(edapemRepository)
+
 	tksService := services.NewTKSService(supermanService)
 
 	fincloudService := services.NewFincloudService(
@@ -87,6 +92,7 @@ func main() {
 		savingService,
 		tksService,
 		supermanService,
+		edapemService,
 	)
 
 	srv := &http.Server{
@@ -138,9 +144,15 @@ func initDB() (*Database, error) {
 		return nil, fmt.Errorf("opening Superman database: %w", err)
 	}
 
+	edapem, err := sqlx.Open("mysql", os.Getenv("EDAPEM_DBSTRING"))
+	if err != nil {
+		return nil, fmt.Errorf("opening Edapem database: %w", err)
+	}
+
 	return &Database{
 		Dwh:      dwh,
 		Superman: superman,
+		Edapem:   edapem,
 		AppDb:    appDb,
 	}, nil
 }

@@ -19,6 +19,7 @@ type Handler struct {
 	SupermanService    interfaces.ISupermanService
 	templates          *template.Template
 	assetsHandler      http.Handler
+	EdapemService      interfaces.IEdapemService
 }
 
 func NewHandler(
@@ -26,6 +27,7 @@ func NewHandler(
 	savingService interfaces.ISavingService,
 	tksService interfaces.ITKSService,
 	supermanService interfaces.ISupermanService,
+	edapemService interfaces.IEdapemService,
 ) *Handler {
 	templates := template.Must(template.ParseFS(web.Files, "templates/*.html"))
 
@@ -39,6 +41,7 @@ func NewHandler(
 		SavingService:      savingService,
 		TKSService:         tksService,
 		SupermanService:    supermanService,
+		EdapemService:      edapemService,
 		templates:          templates,
 		assetsHandler:      http.StripPrefix("/assets/", http.FileServer(http.FS(staticFS))),
 	}
