@@ -180,6 +180,44 @@
           {{ end }}
         </div>
       </section>
+
+      <section class="table-section table-section--dark">
+        <div class="section-heading section-heading--dark">
+          <p class="eyebrow">TKS &amp; Dapem</p>
+          <h2>Monthly Position</h2>
+        </div>
+
+        <div class="table-panel">
+          {{ if .HealthTable.HasRows }}
+          <div class="table-scroll">
+            <table class="health-table">
+              <thead>
+                <tr>
+                  <th scope="col">No</th>
+                  <th scope="col">Bulan</th>
+                  <th scope="col">LDR</th>
+                  <th scope="col">Cash Ratio</th>
+                  <th scope="col">Total Dapem</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{ range .HealthTable.Rows }}
+                <tr>
+                  <td>{{ .No }}</td>
+                  <td>{{ .Label }}</td>
+                  <td>{{ .LDRDisplay }}</td>
+                  <td>{{ .CashRatioDisplay }}</td>
+                  <td>{{ .TotalDapemDisplay }}</td>
+                </tr>
+                {{ end }}
+              </tbody>
+            </table>
+          </div>
+          {{ else }}
+          <div class="empty-state">No TKS or Dapem data for selected period.</div>
+          {{ end }}
+        </div>
+      </section>
     </main>
 
     <script type="application/json" id="historical-deposits-data">

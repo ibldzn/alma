@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -22,10 +23,13 @@ const (
 	dashboardRangeCustom = "custom"
 )
 
+var dashboardToday = utils.GetTodayDateInJakarta
+
 type IndexPageData struct {
 	Period      DashboardPeriod
 	Cards       DashboardCards
 	Charts      DashboardCharts
+	HealthTable DashboardHealthTable
 	Error       string
 	CurrentUser SessionUser
 }
@@ -68,6 +72,25 @@ type DashboardCharts struct {
 	HistoricalLDRJSON      template.JS
 	HasHistoricalDeposits  bool
 	HasHistoricalLDR       bool
+}
+
+type DashboardHealthTable struct {
+	Rows    []DashboardHealthTableRow
+	HasRows bool
+}
+
+type DashboardHealthTableRow struct {
+	No                int
+	Label             string
+	LDRDisplay        string
+	CashRatioDisplay  string
+	TotalDapemDisplay string
+}
+
+type dashboardHealthBucket struct {
+	Label     string
+	StartDate string
+	EndDate   string
 }
 
 type lineChartData struct {
@@ -157,9 +180,10 @@ func buildIndexPageData(
 	}
 
 	return IndexPageData{
-		Period: period,
-		Cards:  cards,
-		Charts: charts,
+		Period:      period,
+		Cards:       cards,
+		Charts:      charts,
+		HealthTable: emptyDashboardHealthTable(),
 	}, nil
 }
 
@@ -217,6 +241,17 @@ func aggregateLDR(rows []models.LDRSummaryRow) map[string]float64 {
 		date := strings.TrimSpace(row.Date)
 		if date != "" {
 			series[date] = row.ConsolidatedLDR
+		}
+	}
+	return series
+}
+
+func aggregateCashRatio(rows []models.CashRatioSummaryRow) map[string]float64 {
+	series := make(map[string]float64)
+	for _, row := range rows {
+		date := strings.TrimSpace(row.Date)
+		if date != "" {
+			series[date] = row.CashRatio
 		}
 	}
 	return series
@@ -373,6 +408,165 @@ func formatDisplayDate(date string) string {
 	return parsed.Format("02 Jan 2006")
 }
 
+func (h *Handler) loadDashboardHealthTable(
+	ctx context.Context,
+	period DashboardPeriod,
+	today time.Time,
+	ldr []models.LDRSummaryRow,
+	cashRatios []models.CashRatioSummaryRow,
+) (DashboardHealthTable, error) {
+	buckets, err := dashboardHealthBuckets(period, today)
+	if err != nil {
+		return DashboardHealthTable{}, err
+	}
+
+	dapemTotals := make([]models.EdapemSummaryRow, 0, len(buckets))
+	for _, bucket := range buckets {
+		total, err := h.EdapemService.GetTotalDapemByType(ctx, bucket.StartDate, bucket.EndDate, "1")
+		if err != nil {
+			return DashboardHealthTable{}, fmt.Errorf("%s: %w", bucket.Label, err)
+		}
+		dapemTotals = append(dapemTotals, total)
+	}
+
+	return buildDashboardHealthTable(buckets, ldr, cashRatios, dapemTotals), nil
+}
+
+func dashboardHealthBuckets(period DashboardPeriod, today time.Time) ([]dashboardHealthBucket, error) {
+	start, end, err := utils.ValidateDateRange(period.StartDate, period.EndDate)
+	if err != nil {
+		return nil, err
+	}
+
+	var buckets []dashboardHealthBucket
+	for monthStart := firstDayOfMonth(start); !monthStart.After(end); monthStart = monthStart.AddDate(0, 1, 0) {
+		monthEnd := lastDayOfMonth(monthStart)
+		if sameMonth(monthStart, today) {
+			buckets = append(buckets, currentMonthWeekBuckets(start, end, monthStart)...)
+			continue
+		}
+
+		bucketStart := maxDate(start, monthStart)
+		bucketEnd := minDate(end, monthEnd)
+		if bucketEnd.Before(bucketStart) {
+			continue
+		}
+
+		buckets = append(buckets, dashboardHealthBucket{
+			Label:     monthStart.Format("Jan 2006"),
+			StartDate: bucketStart.Format(constants.DateFormat),
+			EndDate:   bucketEnd.Format(constants.DateFormat),
+		})
+	}
+
+	return buckets, nil
+}
+
+func currentMonthWeekBuckets(start, end, monthStart time.Time) []dashboardHealthBucket {
+	monthEnd := lastDayOfMonth(monthStart)
+	lastDay := monthEnd.Day()
+	weekStarts := []int{1, 8, 15, 22}
+	weekEnds := []int{7, 14, 21, lastDay}
+	buckets := make([]dashboardHealthBucket, 0, len(weekStarts))
+
+	for i := range weekStarts {
+		weekStart := time.Date(monthStart.Year(), monthStart.Month(), weekStarts[i], 0, 0, 0, 0, monthStart.Location())
+		weekEnd := time.Date(monthStart.Year(), monthStart.Month(), weekEnds[i], 0, 0, 0, 0, monthStart.Location())
+		bucketStart := maxDate(start, weekStart)
+		bucketEnd := minDate(end, weekEnd)
+		if bucketEnd.Before(bucketStart) {
+			continue
+		}
+
+		buckets = append(buckets, dashboardHealthBucket{
+			Label:     fmt.Sprintf("%s W%d", monthStart.Format("Jan 2006"), i+1),
+			StartDate: bucketStart.Format(constants.DateFormat),
+			EndDate:   bucketEnd.Format(constants.DateFormat),
+		})
+	}
+
+	return buckets
+}
+
+func firstDayOfMonth(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, date.Location())
+}
+
+func lastDayOfMonth(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month()+1, 0, 0, 0, 0, 0, date.Location())
+}
+
+func sameMonth(a, b time.Time) bool {
+	return a.Year() == b.Year() && a.Month() == b.Month()
+}
+
+func maxDate(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
+}
+
+func minDate(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
+}
+
+func buildDashboardHealthTable(
+	buckets []dashboardHealthBucket,
+	ldr []models.LDRSummaryRow,
+	cashRatios []models.CashRatioSummaryRow,
+	dapemTotals []models.EdapemSummaryRow,
+) DashboardHealthTable {
+	ldrByDate := aggregateLDR(ldr)
+	cashRatioByDate := aggregateCashRatio(cashRatios)
+	rows := make([]DashboardHealthTableRow, 0, len(buckets))
+
+	for i, bucket := range buckets {
+		row := DashboardHealthTableRow{
+			No:                i + 1,
+			Label:             bucket.Label,
+			LDRDisplay:        "No data",
+			CashRatioDisplay:  "No data",
+			TotalDapemDisplay: "0",
+		}
+
+		if value, ok := latestSeriesValueInBucket(ldrByDate, bucket); ok {
+			row.LDRDisplay = formatPercent(value)
+		}
+		if value, ok := latestSeriesValueInBucket(cashRatioByDate, bucket); ok {
+			row.CashRatioDisplay = formatPercent(value)
+		}
+		if i < len(dapemTotals) {
+			row.TotalDapemDisplay = formatIntegerWithDots(float64(dapemTotals[i].TotalCustomer))
+		}
+
+		rows = append(rows, row)
+	}
+
+	return DashboardHealthTable{
+		Rows:    rows,
+		HasRows: len(rows) > 0,
+	}
+}
+
+func latestSeriesValueInBucket(series map[string]float64, bucket dashboardHealthBucket) (float64, bool) {
+	latestDate := ""
+	var latestValue float64
+	for date, value := range series {
+		if date < bucket.StartDate || date > bucket.EndDate {
+			continue
+		}
+		if latestDate == "" || date > latestDate {
+			latestDate = date
+			latestValue = value
+		}
+	}
+	return latestValue, latestDate != ""
+}
+
 func buildDashboardCharts(
 	abpDeposits map[string]float64,
 	nonABPDeposits map[string]float64,
@@ -494,6 +688,10 @@ func emptyDashboardCharts() DashboardCharts {
 		HistoricalDepositsJSON: emptyJSON,
 		HistoricalLDRJSON:      emptyJSON,
 	}
+}
+
+func emptyDashboardHealthTable() DashboardHealthTable {
+	return DashboardHealthTable{}
 }
 
 func formatCompactRupiah(value float64) string {

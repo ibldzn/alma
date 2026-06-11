@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/ibldzn/alma/internal/interfaces"
-	"github.com/ibldzn/alma/internal/utils"
 	"github.com/ibldzn/alma/internal/web"
 )
 
@@ -61,12 +60,14 @@ func (h *Handler) Router() http.Handler {
 
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 	var currentUser SessionUser
-	period, err := resolveDashboardPeriod(r.URL.Query(), utils.GetTodayDateInJakarta())
+	today := dashboardToday()
+	period, err := resolveDashboardPeriod(r.URL.Query(), today)
 	if err != nil {
 		h.renderIndex(w, http.StatusBadRequest, IndexPageData{
 			Period:      period,
 			Cards:       emptyDashboardCards(),
 			Charts:      emptyDashboardCharts(),
+			HealthTable: emptyDashboardHealthTable(),
 			Error:       "Invalid date filter: " + err.Error(),
 			CurrentUser: currentUser,
 		})
@@ -91,9 +92,21 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cashRatios, err := h.TKSService.GetCashRatioHistory(r.Context(), period.StartDate, period.EndDate)
+	if err != nil {
+		h.renderDashboardLoadError(w, period, currentUser, "Unable to load Cash Ratio data: "+err.Error())
+		return
+	}
+
 	loanFromOtherBanks, err := h.SupermanService.GetSaldoNeracas(r.Context(), period.StartDate, period.EndDate, []string{"260"})
 	if err != nil {
 		h.renderDashboardLoadError(w, period, currentUser, "Unable to load Pinjaman Bank Lain data: "+err.Error())
+		return
+	}
+
+	healthTable, err := h.loadDashboardHealthTable(r.Context(), period, today, ldr, cashRatios)
+	if err != nil {
+		h.renderDashboardLoadError(w, period, currentUser, "Unable to load Dapem data: "+err.Error())
 		return
 	}
 
@@ -103,6 +116,7 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.CurrentUser = currentUser
+	data.HealthTable = healthTable
 
 	h.renderIndex(w, http.StatusOK, data)
 }
@@ -112,6 +126,7 @@ func (h *Handler) renderDashboardLoadError(w http.ResponseWriter, period Dashboa
 		Period:      period,
 		Cards:       emptyDashboardCards(),
 		Charts:      emptyDashboardCharts(),
+		HealthTable: emptyDashboardHealthTable(),
 		Error:       message,
 		CurrentUser: currentUser,
 	})

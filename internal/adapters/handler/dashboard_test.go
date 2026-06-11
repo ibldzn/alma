@@ -140,6 +140,86 @@ func TestBuildIndexPageDataAggregatesCardsAndCharts(t *testing.T) {
 	}
 }
 
+func TestDashboardHealthBucketsSplitCurrentMonth(t *testing.T) {
+	today := time.Date(2026, time.June, 11, 0, 0, 0, 0, utils.JakartaLocation())
+	period := newDashboardPeriod(dashboardRangeCustom, "2026-01-15", "2026-06-30")
+
+	buckets, err := dashboardHealthBuckets(period, today)
+	if err != nil {
+		t.Fatalf("dashboardHealthBuckets returned error: %v", err)
+	}
+
+	want := []dashboardHealthBucket{
+		{Label: "Jan 2026", StartDate: "2026-01-15", EndDate: "2026-01-31"},
+		{Label: "Feb 2026", StartDate: "2026-02-01", EndDate: "2026-02-28"},
+		{Label: "Mar 2026", StartDate: "2026-03-01", EndDate: "2026-03-31"},
+		{Label: "Apr 2026", StartDate: "2026-04-01", EndDate: "2026-04-30"},
+		{Label: "May 2026", StartDate: "2026-05-01", EndDate: "2026-05-31"},
+		{Label: "Jun 2026 W1", StartDate: "2026-06-01", EndDate: "2026-06-07"},
+		{Label: "Jun 2026 W2", StartDate: "2026-06-08", EndDate: "2026-06-14"},
+		{Label: "Jun 2026 W3", StartDate: "2026-06-15", EndDate: "2026-06-21"},
+		{Label: "Jun 2026 W4", StartDate: "2026-06-22", EndDate: "2026-06-30"},
+	}
+	if !reflect.DeepEqual(buckets, want) {
+		t.Fatalf("buckets = %+v, want %+v", buckets, want)
+	}
+}
+
+func TestDashboardHealthBucketsClampSelectedRange(t *testing.T) {
+	today := time.Date(2026, time.June, 11, 0, 0, 0, 0, utils.JakartaLocation())
+	period := newDashboardPeriod(dashboardRangeCustom, "2026-05-15", "2026-06-10")
+
+	buckets, err := dashboardHealthBuckets(period, today)
+	if err != nil {
+		t.Fatalf("dashboardHealthBuckets returned error: %v", err)
+	}
+
+	want := []dashboardHealthBucket{
+		{Label: "May 2026", StartDate: "2026-05-15", EndDate: "2026-05-31"},
+		{Label: "Jun 2026 W1", StartDate: "2026-06-01", EndDate: "2026-06-07"},
+		{Label: "Jun 2026 W2", StartDate: "2026-06-08", EndDate: "2026-06-10"},
+	}
+	if !reflect.DeepEqual(buckets, want) {
+		t.Fatalf("buckets = %+v, want %+v", buckets, want)
+	}
+}
+
+func TestBuildDashboardHealthTableUsesLatestMetricsInBucket(t *testing.T) {
+	buckets := []dashboardHealthBucket{
+		{Label: "May 2026", StartDate: "2026-05-01", EndDate: "2026-05-31"},
+		{Label: "Jun 2026 W1", StartDate: "2026-06-01", EndDate: "2026-06-07"},
+	}
+
+	table := buildDashboardHealthTable(
+		buckets,
+		[]models.LDRSummaryRow{
+			{Date: "2026-05-05", ConsolidatedLDR: 100},
+			{Date: "2026-05-20", ConsolidatedLDR: 110.25},
+			{Date: "2026-06-03", ConsolidatedLDR: 120.5},
+		},
+		[]models.CashRatioSummaryRow{
+			{Date: "2026-05-10", CashRatio: 50},
+			{Date: "2026-05-31", CashRatio: 60.75},
+			{Date: "2026-06-07", CashRatio: 70},
+		},
+		[]models.EdapemSummaryRow{
+			{TotalCustomer: 1234},
+			{TotalCustomer: 5000},
+		},
+	)
+
+	want := DashboardHealthTable{
+		Rows: []DashboardHealthTableRow{
+			{No: 1, Label: "May 2026", LDRDisplay: "110,25%", CashRatioDisplay: "60,75%", TotalDapemDisplay: "1.234"},
+			{No: 2, Label: "Jun 2026 W1", LDRDisplay: "120,50%", CashRatioDisplay: "70,00%", TotalDapemDisplay: "5.000"},
+		},
+		HasRows: true,
+	}
+	if !reflect.DeepEqual(table, want) {
+		t.Fatalf("table = %+v, want %+v", table, want)
+	}
+}
+
 func TestMoneyChangeFromZeroIsSafe(t *testing.T) {
 	card := makeMoneyCard("Savings", map[string]float64{
 		"2026-06-01": 0,
@@ -237,6 +317,10 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 			{Date: "2026-06-01", ConsolidatedLDR: 160},
 			{Date: "2026-06-02", ConsolidatedLDR: 163.92},
 		},
+		cashRatioRows: []models.CashRatioSummaryRow{
+			{Date: "2026-06-01", CashRatio: 20},
+			{Date: "2026-06-02", CashRatio: 21.5},
+		},
 	}
 	supermanService := &fakeSupermanService{
 		rows: []models.SaldoNeraca{
@@ -264,6 +348,8 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 		"Total Deposit",
 		"Rp 400,00 M",
 		"historical-deposits-data",
+		"TKS &amp; Dapem",
+		"Total Dapem",
 		"/assets/js/chart.umd.min.js",
 		"filter-menu-toggle",
 		`aria-controls="dashboard-filters"`,
@@ -279,6 +365,64 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 	}
 	if !reflect.DeepEqual(supermanService.accounts, []string{"260"}) {
 		t.Fatalf("superman accounts = %v, want [260]", supermanService.accounts)
+	}
+}
+
+func TestIndexRendersHealthTableAndCallsDapemBuckets(t *testing.T) {
+	setDashboardTodayForTest(t, time.Date(2026, time.June, 11, 0, 0, 0, 0, utils.JakartaLocation()))
+
+	tksService := &fakeTKSService{
+		rows: []models.LDRSummaryRow{
+			{Date: "2026-05-20", ConsolidatedLDR: 155.25},
+			{Date: "2026-06-06", ConsolidatedLDR: 160},
+			{Date: "2026-06-10", ConsolidatedLDR: 161.75},
+		},
+		cashRatioRows: []models.CashRatioSummaryRow{
+			{Date: "2026-05-31", CashRatio: 33.33},
+			{Date: "2026-06-06", CashRatio: 34},
+			{Date: "2026-06-10", CashRatio: 35.5},
+		},
+	}
+	edapemService := &fakeEdapemService{
+		totals: map[string]int{
+			dapemTotalKey("2026-05-15", "2026-05-31", "1"): 1234,
+			dapemTotalKey("2026-06-01", "2026-06-07", "1"): 2500,
+			dapemTotalKey("2026-06-08", "2026-06-10", "1"): 3456,
+		},
+	}
+	handler := newTestHandlerWithEdapem(t, nil, nil, tksService, nil, edapemService)
+	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=2026-05-15&end_date=2026-06-10", nil)
+	rec := httptest.NewRecorder()
+
+	handler.Router().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	wantCalls := []fakeEdapemCall{
+		{startDate: "2026-05-15", endDate: "2026-05-31", dapemType: "1"},
+		{startDate: "2026-06-01", endDate: "2026-06-07", dapemType: "1"},
+		{startDate: "2026-06-08", endDate: "2026-06-10", dapemType: "1"},
+	}
+	if !reflect.DeepEqual(edapemService.calls, wantCalls) {
+		t.Fatalf("Dapem calls = %+v, want %+v", edapemService.calls, wantCalls)
+	}
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		"<th scope=\"col\">Bulan</th>",
+		"<th scope=\"col\">Cash Ratio</th>",
+		"May 2026",
+		"Jun 2026 W1",
+		"Jun 2026 W2",
+		"161,75%",
+		"35,50%",
+		"3.456",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("response body missing %q", want)
+		}
 	}
 }
 
@@ -448,6 +592,17 @@ func newTestHandler(
 	tksService *fakeTKSService,
 	supermanService *fakeSupermanService,
 ) *Handler {
+	return newTestHandlerWithEdapem(t, timeDepositService, savingService, tksService, supermanService, nil)
+}
+
+func newTestHandlerWithEdapem(
+	t *testing.T,
+	timeDepositService *fakeTimeDepositService,
+	savingService *fakeSavingService,
+	tksService *fakeTKSService,
+	supermanService *fakeSupermanService,
+	edapemService *fakeEdapemService,
+) *Handler {
 	t.Helper()
 
 	if timeDepositService == nil {
@@ -462,12 +617,28 @@ func newTestHandler(
 	if supermanService == nil {
 		supermanService = &fakeSupermanService{}
 	}
+	if edapemService == nil {
+		edapemService = &fakeEdapemService{}
+	}
 	return NewHandler(
 		timeDepositService,
 		savingService,
 		tksService,
 		supermanService,
+		edapemService,
 	)
+}
+
+func setDashboardTodayForTest(t *testing.T, today time.Time) {
+	t.Helper()
+
+	previous := dashboardToday
+	dashboardToday = func() time.Time {
+		return today
+	}
+	t.Cleanup(func() {
+		dashboardToday = previous
+	})
 }
 
 type fakeTimeDepositService struct {
@@ -522,6 +693,38 @@ func (f *fakeTKSService) GetLDRHistory(ctx context.Context, startDate, endDate s
 
 func (f *fakeTKSService) GetCashRatioHistory(ctx context.Context, startDate, endDate string) ([]models.CashRatioSummaryRow, error) {
 	return f.cashRatioRows, f.err
+}
+
+type fakeEdapemCall struct {
+	startDate string
+	endDate   string
+	dapemType string
+}
+
+type fakeEdapemService struct {
+	totals map[string]int
+	calls  []fakeEdapemCall
+	err    error
+}
+
+func (f *fakeEdapemService) GetTotalDapemByType(ctx context.Context, startDate, endDate, dapemType string) (models.EdapemSummaryRow, error) {
+	f.calls = append(f.calls, fakeEdapemCall{
+		startDate: startDate,
+		endDate:   endDate,
+		dapemType: dapemType,
+	})
+	if f.err != nil {
+		return models.EdapemSummaryRow{}, f.err
+	}
+
+	return models.EdapemSummaryRow{
+		Date:          startDate,
+		TotalCustomer: f.totals[dapemTotalKey(startDate, endDate, dapemType)],
+	}, nil
+}
+
+func dapemTotalKey(startDate, endDate, dapemType string) string {
+	return startDate + "|" + endDate + "|" + dapemType
 }
 
 type fakeSupermanService struct {
