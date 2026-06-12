@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/ibldzn/alma/internal/interfaces"
 	"github.com/ibldzn/alma/internal/web"
 )
@@ -49,6 +50,10 @@ func NewHandler(
 func (h *Handler) Router() http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(middleware.Logger)
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Recoverer)
+
 	r.Handle("/assets/*", h.assetsHandler)
 	r.Get("/login", h.LoginForm)
 	r.Post("/login", h.LoginSubmit)
@@ -64,12 +69,13 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 	period, err := resolveDashboardPeriod(r.URL.Query(), today)
 	if err != nil {
 		h.renderIndex(w, http.StatusBadRequest, IndexPageData{
-			Period:      period,
-			Cards:       emptyDashboardCards(),
-			Charts:      emptyDashboardCharts(),
-			HealthTable: emptyDashboardHealthTable(),
-			Error:       "Invalid date filter: " + err.Error(),
-			CurrentUser: currentUser,
+			Period:               period,
+			CurrentPositionTitle: dashboardCurrentPositionTitle(period),
+			Cards:                emptyDashboardCards(),
+			Charts:               emptyDashboardCharts(),
+			HealthTable:          emptyDashboardHealthTable(),
+			Error:                "Invalid date filter: " + err.Error(),
+			CurrentUser:          currentUser,
 		})
 		return
 	}
@@ -123,12 +129,13 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) renderDashboardLoadError(w http.ResponseWriter, period DashboardPeriod, currentUser SessionUser, message string) {
 	h.renderIndex(w, http.StatusInternalServerError, IndexPageData{
-		Period:      period,
-		Cards:       emptyDashboardCards(),
-		Charts:      emptyDashboardCharts(),
-		HealthTable: emptyDashboardHealthTable(),
-		Error:       message,
-		CurrentUser: currentUser,
+		Period:               period,
+		CurrentPositionTitle: dashboardCurrentPositionTitle(period),
+		Cards:                emptyDashboardCards(),
+		Charts:               emptyDashboardCharts(),
+		HealthTable:          emptyDashboardHealthTable(),
+		Error:                message,
+		CurrentUser:          currentUser,
 	})
 }
 

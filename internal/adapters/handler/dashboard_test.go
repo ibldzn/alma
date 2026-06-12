@@ -330,7 +330,7 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 	}
 	handler := newTestHandler(t, timeDepositService, savingService, tksService, supermanService)
 
-	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=2026-06-01&end_date=2026-06-02", nil)
+	req := httptest.NewRequest(http.MethodGet, "/?range=custom&start_date=2026-06-01&end_date=2026-06-08", nil)
 	rec := httptest.NewRecorder()
 
 	handler.Router().ServeHTTP(rec, req)
@@ -345,6 +345,8 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"Funding &amp; Liquidity",
+		"Asset Liability Monitoring Analytics",
+		"Current Position: 08 Jun 2026",
 		"Total Deposit",
 		"Rp 400,00 M",
 		"historical-deposits-data",
@@ -360,7 +362,7 @@ func TestIndexRendersHTMLDashboard(t *testing.T) {
 		}
 	}
 
-	if timeDepositService.startDate != "2026-06-01" || timeDepositService.endDate != "2026-06-02" {
+	if timeDepositService.startDate != "2026-06-01" || timeDepositService.endDate != "2026-06-08" {
 		t.Fatalf("time deposit service date range = %s to %s", timeDepositService.startDate, timeDepositService.endDate)
 	}
 	if !reflect.DeepEqual(supermanService.accounts, []string{"260"}) {

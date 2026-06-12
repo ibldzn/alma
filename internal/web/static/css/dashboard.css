@@ -412,6 +412,22 @@ main {
   letter-spacing: -0.28px;
 }
 
+.hero-subtitle {
+  margin: 12px 0 0;
+  font-family:
+    "SF Pro Display",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.14;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
 .metric-section,
 .chart-section,
 .table-section {
@@ -775,6 +791,11 @@ main {
 
   .hero-section {
     padding-inline: 16px;
+  }
+
+  .hero-subtitle {
+    font-size: 24px;
+    line-height: 1.25;
   }
 
   .card-grid {

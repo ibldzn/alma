@@ -26,12 +26,13 @@ const (
 var dashboardToday = utils.GetTodayDateInJakarta
 
 type IndexPageData struct {
-	Period      DashboardPeriod
-	Cards       DashboardCards
-	Charts      DashboardCharts
-	HealthTable DashboardHealthTable
-	Error       string
-	CurrentUser SessionUser
+	Period               DashboardPeriod
+	CurrentPositionTitle string
+	Cards                DashboardCards
+	Charts               DashboardCharts
+	HealthTable          DashboardHealthTable
+	Error                string
+	CurrentUser          SessionUser
 }
 
 type DashboardPeriod struct {
@@ -180,11 +181,20 @@ func buildIndexPageData(
 	}
 
 	return IndexPageData{
-		Period:      period,
-		Cards:       cards,
-		Charts:      charts,
-		HealthTable: emptyDashboardHealthTable(),
+		Period:               period,
+		CurrentPositionTitle: dashboardCurrentPositionTitle(period),
+		Cards:                cards,
+		Charts:               charts,
+		HealthTable:          emptyDashboardHealthTable(),
 	}, nil
+}
+
+func dashboardCurrentPositionTitle(period DashboardPeriod) string {
+	endDate := strings.TrimSpace(period.EndDate)
+	if endDate == "" {
+		return "Current Position"
+	}
+	return fmt.Sprintf("Current Position: %s", formatDisplayDate(endDate))
 }
 
 func aggregateTimeDeposits(rows []models.TimeDepositSummaryRow) (map[string]float64, map[string]float64) {
